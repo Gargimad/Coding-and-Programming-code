@@ -55,7 +55,7 @@ class Login:
             return
 
         if self.db.userExists(email, password):
-            messagebox.showinfo("Success", "Login successful!")
+            #messagebox.showinfo("Success", "Login successful!")
             self.login_success(email)
         else:
             messagebox.showerror("Error", "Invalid credentials.")

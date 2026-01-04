@@ -56,7 +56,6 @@ class DashboardPage:
             ("🏠 Dashboard", "Dashboard"),
             ("🔍 Discover", "Discover"),
             ("🔖 Bookmarks", "Book"),
-            ("🖊 Create", "Create"),
             ("⚙️ Settings", "Settings")
         ]
 

@@ -59,3 +59,4 @@ class SignUp:
             self.root.destroy()
         else:
             messagebox.showerror("Error", "Account already exists.")
+            

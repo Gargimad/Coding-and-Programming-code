@@ -62,7 +62,26 @@ class Database:
         except sqlite3.Error as e:
             print(f"Database error: {e}")
             return False
-
+        
+    def fetchCategories(self): #Db connection
+        self.pibbitCursor.execute(
+            "SELECT cat_id, cat_name FROM categories ORDER BY cat_id ASC"
+        )
+        categories = self.pibbitCursor.fetchall()
+        return categories
+    def fetchSubcategories(self, cat_id):
+        self.pibbitCursor.execute(
+            "SELECT sub_id, sub_name FROM subcategories WHERE cat_id = ? ORDER BY sub_name ASC",
+            (cat_id,)
+        )
+        subcategories = self.pibbitCursor.fetchall()
+        return subcategories
+    def fetchBusinessesBySubs(self, sub_id):
+        self.pibbitCursor.execute(
+            "SELECT biz_id, biz_name, rating, review_count, description FROM businesses WHERE sub_id = ? ORDER by biz_name ASC", (sub_id,)
+        )
+        businesses = self.pibbitCursor.fetchall()
+        return businesses
     def close(self):
         self.connection.close()
         self.pibbitConnection.close()

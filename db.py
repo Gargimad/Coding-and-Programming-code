@@ -2,14 +2,18 @@ import sqlite3
 
 class Database:
     def __init__(self):
+        # Connection for user authentication
         self.connection = sqlite3.connect("users.db")
         self.cursor = self.connection.cursor()
         
+        # Connection for the app data
         self.pibbitConnection = sqlite3.connect("pibbit.sqlite")
         self.pibbitCursor = self.pibbitConnection.cursor()
+        
         self.createTable()
         
     def createTable(self):
+        # 1. Create Users Table
         self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 email TEXT PRIMARY KEY,
@@ -18,17 +22,33 @@ class Database:
         """)
         self.connection.commit()
         
-        # Removed the trailing comma after FLOAT
-        self.pibbitCursor.execute("""
-            CREATE TABLE IF NOT EXISTS pibbit (
-                businessType TEXT NOT NULL,
-                businessName TEXT NOT NULL,
-                rating FLOAT,
-                subType TEXT,
-                trending BOOLEAN,
-                bookmarked BOOLEAN, 
-                bussID INTEGER
-            )
+        # 2. Create Pibbit Tables using executescript
+        # - Added missing cat_id and sub_id columns
+        # - Removed the extra comma in the categories table
+        # - Ensured semicolons separate the statements
+        self.pibbitCursor.executescript("""
+            CREATE TABLE IF NOT EXISTS categories (
+                cat_id INTEGER PRIMARY KEY,
+                cat_name TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS subcategories (
+                sub_id INTEGER PRIMARY KEY, 
+                cat_id INTEGER,
+                sub_name TEXT NOT NULL,
+                FOREIGN KEY (cat_id) REFERENCES categories (cat_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS businesses (
+                biz_id INTEGER PRIMARY KEY,
+                sub_id INTEGER,
+                biz_name TEXT NOT NULL,
+                rating REAL,
+                review_count INTEGER,
+                description TEXT,
+                website_link TEXT,
+                FOREIGN KEY(sub_id) REFERENCES subcategories(sub_id)
+            );
         """)
         self.pibbitConnection.commit()
 
@@ -50,12 +70,13 @@ class Database:
         )
         return self.cursor.fetchone() is not None
     
-    def createBusiness(self, businessName, businessType): 
+    def createBusiness(self, businessName, businessDescription, sub_id): 
         try: 
-            # Added explicit column names and handled the 3rd column (rating) as NULL/default
+            # Changed table name from 'pibbit' to 'businesses'
+            # Added sub_id so the business is actually linked to a subcategory
             self.pibbitCursor.execute(
-                "INSERT INTO pibbit (businessName, businessType, rating) VALUES (?, ?, ?)", 
-                (businessName, businessType, 0.0) 
+                "INSERT INTO businesses (biz_name, description, sub_id, rating, review_count) VALUES (?, ?, ?, ?, ?)", 
+                (businessName, businessDescription, sub_id, 0.0, 0) 
             )
             self.pibbitConnection.commit()
             return True
@@ -63,25 +84,26 @@ class Database:
             print(f"Database error: {e}")
             return False
         
-    def fetchCategories(self): #Db connection
+    def fetchCategories(self):
         self.pibbitCursor.execute(
             "SELECT cat_id, cat_name FROM categories ORDER BY cat_id ASC"
         )
-        categories = self.pibbitCursor.fetchall()
-        return categories
+        return self.pibbitCursor.fetchall()
+
     def fetchSubcategories(self, cat_id):
         self.pibbitCursor.execute(
             "SELECT sub_id, sub_name FROM subcategories WHERE cat_id = ? ORDER BY sub_name ASC",
             (cat_id,)
         )
-        subcategories = self.pibbitCursor.fetchall()
-        return subcategories
+        return self.pibbitCursor.fetchall()
+
     def fetchBusinessesBySubs(self, sub_id):
         self.pibbitCursor.execute(
-            "SELECT biz_id, biz_name, rating, review_count, description FROM businesses WHERE sub_id = ? ORDER by biz_name ASC", (sub_id,)
+            "SELECT biz_id, biz_name, rating, review_count, description FROM businesses WHERE sub_id = ? ORDER by biz_name ASC", 
+            (sub_id,)
         )
-        businesses = self.pibbitCursor.fetchall()
-        return businesses
+        return self.pibbitCursor.fetchall()
+
     def close(self):
         self.connection.close()
         self.pibbitConnection.close()

@@ -2,35 +2,37 @@ import tkinter as tk
 from tkinter import *
 from PIL import Image, ImageTk
 from db import Database
-#from login import Login
+from login import Login
 
 class StartScreen:
-    def __init__(self, root):
+    def __init__(self, root): #Initialization function
         self.root = root
-        self.db = Database()
-        self.root.title("PIBBIT")
+        self.db = Database() #Connecting to the database
+        self.root.title("PIBBIT") #Top title in the tkinter application
         self.root.state("zoomed")
-        self.root.configure(bg="#DAA520")
-        self.createUi()
-        self.createDynamicNav()
-        self.resultsContainer = tk.Frame(self.root, bg="#DAA520")
+        self.root.configure(bg="#DAA520") #Background of the whole application
+        self.createUi() #Goes to the createUi function below
+        self.createDynamicNav() #Goes to the createDynamicNav function that creates the navigation bar
+        self.resultsContainer = tk.Frame(self.root, bg="#DAA520") #This tk frame creates the container that's below the navigation bar
         self.resultsContainer.pack(fill="y", expand=True, pady=(100, 20))
         #self.createNav()
     
-    def createDynamicNav(self):
+    def createDynamicNav(self): #Dynamically creates the navigation bar by connecting to the pibbit.sqlite database
         self.mb = tk.Menubutton(
-            self.root, text="Explore ⏷", 
-            bg="#2D5A27", fg="white", 
+            self.root, text="Explore ⏷", #Explore menu bar at the top left
+            bg="#2D5A27", fg="white", #Styles the explore bar ------>
             font=("Georgia", 12), width=20, 
             direction='below', relief='flat', cursor="hand2")
-        self.mb.place(x=20, y=20)
-        main_menu = tk.Menu(self.mb, tearoff=0, bg="#2D5A27", fg="white", font=("Georgia", 11), activebackground="#3D7A35")
+        self.mb.place(x=20, y=20) #Location of the menu bar
+        
+        main_menu = tk.Menu(self.mb, tearoff=0, bg="#2D5A27", fg="white", font=("Georgia", 11), activebackground="#3D7A35") #Styles the menu bar
         self.mb["menu"] = main_menu
         
         categories = self.fetchCategories() #Calls the method which calls the db
+        
         for cat_id, cat_name in categories: #Iterating and displaying/looping the categories
-            sub_menu = tk.Menu(main_menu, tearoff=0, bg="#2D5A27", fg="white")
-            subcategories = self.fetchSubcategories(cat_id)
+            sub_menu = tk.Menu(main_menu, tearoff=0, bg="#2D5A27", fg="white") #Creating the sub menu- the menu that branches out from the main menu
+            subcategories = self.fetchSubcategories(cat_id) #Fetches the subcategories using the cat_id from the sqlite database
             for sub_id,sub_name in subcategories:
                 sub_menu.add_command(
                     label = sub_name,
@@ -58,7 +60,7 @@ class StartScreen:
         for widget in self.resultsContainer.winfo_children():
             widget.destroy()
         # 2. Add a Header
-        tk.Label(self.resultsContainer, text=f"Results for {sub_name}:", font=("Georgia", 14, "bold")).pack()
+        tk.Label(self.resultsContainer, text=f"Results for {sub_name}:", font=("Georgia", 20, "bold"), bg = "#DAA520", pady= 15).pack()
             # 3. Fetch data from SQLite
         businesses = self.fetchBusinessesBySubs(sub_id) 
         
@@ -76,8 +78,9 @@ class StartScreen:
                 
                 # Stars Row
                 stars = "★" * int(float(rating)) + "☆" * (5 - int(float(rating)))
-                tk.Label(card, text=f"{stars})", font=("Arial", 12), 
+                tk.Label(card, text=f"{stars})", font=("Georgia", 12), 
                          bg="#DDE0D6", fg="#E1AD01").pack(anchor="w")
+                tk.Label(card, text=f"{description}", font = ("Georgia", 10)).pack(anchor ='w')
                 
                 # Button
                 tk.Button(card, text="Website link", bg="#E4937A", relief="flat", padx=10).pack(anchor="e")

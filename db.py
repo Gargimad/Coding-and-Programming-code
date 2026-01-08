@@ -21,11 +21,6 @@ class Database:
             )
         """)
         self.connection.commit()
-        
-        # 2. Create Pibbit Tables using executescript
-        # - Added missing cat_id and sub_id columns
-        # - Removed the extra comma in the categories table
-        # - Ensured semicolons separate the statements
         self.pibbitCursor.executescript("""
             CREATE TABLE IF NOT EXISTS categories (
                 cat_id INTEGER PRIMARY KEY,

@@ -3,6 +3,7 @@ from tkinter import *
 from PIL import Image, ImageTk
 from db import Database
 from login import Login
+import webbrowser
 
 class StartScreen:
     def __init__(self, root): #Initialization function
@@ -27,9 +28,7 @@ class StartScreen:
         
         main_menu = tk.Menu(self.mb, tearoff=0, bg="#2D5A27", fg="white", font=("Georgia", 11), activebackground="#3D7A35") #Styles the menu bar
         self.mb["menu"] = main_menu
-        
-        categories = self.fetchCategories() #Calls the method which calls the db
-        
+        categories = self.fetchCategories() #Calls the method which calls the db      
         for cat_id, cat_name in categories: #Iterating and displaying/looping the categories
             sub_menu = tk.Menu(main_menu, tearoff=0, bg="#2D5A27", fg="white") #Creating the sub menu- the menu that branches out from the main menu
             subcategories = self.fetchSubcategories(cat_id) #Fetches the subcategories using the cat_id from the sqlite database
@@ -39,11 +38,9 @@ class StartScreen:
                     command=lambda s_id=sub_id, s_name=sub_name: self.displayBusinesses(s_id, s_name) 
                 )
             main_menu.add_cascade(label=cat_name, menu= sub_menu)
-            
         #Login and Sign Up buttons separately but along the same line    
         self.createButton(self.root, "Sign Up", "#2D5A27", self.openSignUp, x_pos= 1300.5, y_pos=20)
         self.createButton(self.root, "Login", "#2D5A27", self.openLogin, x_pos = 1100.5, y_pos=20)
-        
     def fetchCategories(self): #Connects to the same def from db
         categories = self.db.fetchCategories()
         return categories
@@ -55,7 +52,7 @@ class StartScreen:
         return businesses
     def displayBusinesses(self, sub_id, sub_name):
     # 1. Clear previous results from your display area
-        for widget in self.cardFrame.winfo_children():
+        for widget in self.mainPageFrame.winfo_children():
             widget.destroy()
         for widget in self.resultsContainer.winfo_children():
             widget.destroy()
@@ -68,96 +65,91 @@ class StartScreen:
         if not businesses:
             tk.Label(self.resultsContainer, text="No businesses found in this category.").pack()
         else:
-            for biz_id, biz_name, rating, review_count, description in businesses:
-                # MATCHING YOUR IMAGE DESIGN:
-                card = tk.Frame(self.resultsContainer, bg="#DDE0D6", highlightbackground="#6B8E23", 
+            for biz_id, biz_name, rating, review_count, description, website_link in businesses:
+                bizCard = tk.Frame(self.resultsContainer, bg="#DDE0D6", highlightbackground="#6B8E23", 
                                 highlightthickness=2, padx=15, pady=10)
-                card.pack(fill="x", pady=5, padx=50)
+                bizCard.pack(fill="x", pady=5, padx=50)
                 
-                tk.Label(card, text=biz_name, font=("Georgia", 18), bg="#DDE0D6").pack(anchor="w")
-                
-                # Stars Row
+                tk.Label(bizCard, text=biz_name, font=("Georgia", 18), bg="#DDE0D6").pack(anchor="w")
                 stars = "★" * int(float(rating)) + "☆" * (5 - int(float(rating)))
-                tk.Label(card, text=f"{stars})", font=("Georgia", 12), 
+                tk.Label(bizCard, text=f"{stars} {rating}", font=("Georgia", 12), 
                          bg="#DDE0D6", fg="#E1AD01").pack(anchor="w")
-                tk.Label(card, text=f"{description}", font = ("Georgia", 10)).pack(anchor ='w')
+                tk.Label(bizCard, text=f"{description}", font = ("Georgia", 10), bg= "#DDE0D6").pack(anchor ='w')
+                print(website_link)
+                tk.Button(bizCard, text="Website link", bg="#E4937A", relief="flat", padx=10, command= lambda: self.openWebsite(website_link)).pack(anchor="e") #Button that allows users to click on website link
                 
-                # Button
-                tk.Button(card, text="Website link", bg="#E4937A", relief="flat", padx=10).pack(anchor="e")
-    def createUi(self):
-        # Container frame
-        self.cardFrame = tk.Frame(self.root, bg="#DAA520")
-        self.cardFrame.place(relx=0.5, rely=0.5, anchor="center")
-        
-
+    def openWebsite(self, website_link):
+        url= f"{website_link}" #Creates the gateway to the website link in the database
+        print("url", url)
+        print("website_link", website_link)
         try:
-            # Use raw string for the path
-            img_path = r"C:\Gargi Madala\python\github c&p\Coding-and-Programming-code\logo.png"
-            
-            # Open and convert to RGBA
-            img = Image.open(img_path).convert("RGBA")
-            img = img.resize((500, 320), Image.Resampling.LANCZOS)
-            
-            # Create the PhotoImage
+            webbrowser.open(url, new=2) #this opens the link from the click of the button
+        except Exception as e:
+            print(f"Error opening website.Try copying and pasting this link to your webbrowser: {e}") #Backup if the link doesn't work for some reason
+
+    def createUi(self):
+        self.mainPageFrame = tk.Frame(self.root, bg="#DAA520") #Creating the mainPage frame that will hold the logo and the main title
+        self.mainPageFrame.place(relx=0.5, rely=0.5, anchor="center") #Positioning the mainPageFrame
+
+
+        try:  #Will try to use canvas for the image when I reach home----------------------------------------------------------->
+            imgPath = r"C:\Gargi Madala\python\github c&p\Coding-and-Programming-code\logo.png" #Used raw link because logo.png wasn't working? --------------------------------------------Inv further
+            img = Image.open(imgPath)
+            img = img.resize((500, 320))
             photo = ImageTk.PhotoImage(img)
-            
-            # Create label
             logoLabel = tk.Label(
-                self.cardFrame, 
-                image=photo, 
-                bg="#DAA520", 
-                bd=0, 
+                self.mainPageFrame,
+                image=photo,
+                bg="#DAA520",
+                bd=0,
                 highlightthickness=0
             )
-            
-            # IMPORTANT: This line prevents Python from deleting the image from memory
-            logoLabel.image = photo 
-            
+            logoLabel.image = photo #References the image to have a backup when python begins to garbage it
             logoLabel.grid(row=0, column=0, padx=0)
-            
+
         except Exception as e:
             print(f"Error: {e}")
-            tk.Label(self.cardFrame, text="[Logo Error]", bg="#DAA520", fg="white").grid(row=0, column=0)
+            tk.Label(self.mainPageFrame, text="[Logo Error]", bg="#DAA520", fg="white").grid(row=0, column=0)
 
-        # Title Label
-        titleLabel = tk.Label(
-            self.cardFrame,
+        titleLabel = tk.Label( #Styling the main title that appears on startscreen
+            self.mainPageFrame,
             text="PIBBIT",
-            font=("Georgia", 100, "bold"),
-            fg="black",
+            font=("Georgia", 100, "bold"), #Made the font bigger and bolder than the normal texts because of a higher position in heirarchy
+            fg="black", #Applying contrast against the golden background below this
             bg="#DAA520"
         )
         titleLabel.grid(row=0, column=1, sticky="w")
-        sloganLabel = tk.Label(
-            self.cardFrame,
-            text = "Local Business, Just a PIBBIT Away",
-            font=("Georgia", 25),
-            fg = "#6E2F20",
-            bg="#DAA520"
+
+        sloganLabel = tk.Label( #Styling the slogan that's under the title
+            self.mainPageFrame, #Frame that its in
+            text = "Local Business becomes just a Pibbit Away", #The main content
+            font=("Georgia", 25), #style from here-->
+            fg = "#6E2F20", #Differentiated this with the title color to differentiate the purposes of the texts.
+            bg="#DAA520" #Made the fg dark also to contrast with this bg
         )
         sloganLabel.grid(row = 1, column=1, sticky = "w")
-        
-    def createButton(self, parent, text, color, command, x_pos, y_pos):
-        tk.Button(
-            parent, 
+
+    def createButton(self, parent, text, color, command, x_pos, y_pos): #Creates the typical button for users to click on.
+        tk.Button( #Styling the button--->
+            parent,
             text=text,
             font=("Georgia", 12, "bold"),
             bg=color, fg="white",
             width=15, pady=8,
-            bd=0, command=command,
+            bd=0, command=command, 
             cursor = "hand2",
-        ).place(x=x_pos, y=y_pos)
-        
-    def openSignUp(self):
-        self.root.destroy()
-        from signup import SignUp
-        root = tk.Tk()
-        SignUp(root)
-        root.mainloop()
+        ).place(x=x_pos, y=y_pos) #Placement of the button is now more controlled.
 
-    def openLogin(self):
-        self.root.destroy()
-        from login import Login
-        root = tk.Tk()
-        Login(root)
-        root.mainloop()
+    def openSignUp(self): #Opens the Sign up page after user clicks 'Sign up' button
+        self.root.destroy() #Destroys the current display for users to see the Sign up page
+        from signup import SignUp #Imports the Sign up class from signup.py to carry out necessary tasks
+        root = tk.Tk() #Opens up another root or page
+        SignUp(root) #Connects to the root page of the Sign up class and grabs its elements
+        root.mainloop() #Runs the page here automatically
+
+    def openLogin(self): #Opens the login page after user clicks 'Login' button
+        self.root.destroy() #Destroys the current display for users to see the Login page
+        from login import Login #Imports the login class from login.py to carry out necessary tasks
+        root = tk.Tk() #Opens up another root or page
+        Login(root) #Connects to the root page of the Login class and grabs its elements
+        root.mainloop() #Runs the page here automatically

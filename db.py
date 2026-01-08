@@ -99,7 +99,7 @@ class Database:
 
     def fetchBusinessesBySubs(self, sub_id):
         self.pibbitCursor.execute(
-            "SELECT biz_id, biz_name, rating, review_count, description FROM businesses WHERE sub_id = ? ORDER by biz_name ASC", 
+            "SELECT biz_id, biz_name, rating, review_count, description, website_link FROM businesses WHERE sub_id = ? ORDER by biz_name ASC", 
             (sub_id,)
         )
         return self.pibbitCursor.fetchall()

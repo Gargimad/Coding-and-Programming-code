@@ -5,7 +5,6 @@ from db import Database
 import webbrowser
 import os
 
-# --- STEP 1: FIX HIGH-DPI SCALING (Prevents blurry/oversized UI) ---
 try:
     from ctypes import windll
     windll.shcore.SetProcessDpiAwareness(1)
@@ -20,8 +19,6 @@ class StartScreen:
         self.root.state("zoomed")
         self.root.configure(bg="#DAA520")
 
-        # --- STEP 2: CREATE THE RESPONSIVE NAV BAR ---
-        # This frame acts as a container at the top of the window
         self.nav_bar = tk.Frame(self.root, bg="#DAA520")
         self.nav_bar.pack(side="top", fill="x", padx=20, pady=20)
 
@@ -34,7 +31,6 @@ class StartScreen:
         self.resultsContainer.pack(fill="x", expand=True, pady=(20, 20))
 
     def createDynamicNav(self):
-        # Explore Menubutton - Packed to the LEFT
         self.mb = tk.Menubutton(
             self.nav_bar, text="Explore ⏷", 
             bg="#2D5A27", fg="white", 
@@ -56,8 +52,6 @@ class StartScreen:
                 )
             main_menu.add_cascade(label=cat_name, menu=sub_menu)
 
-        # Right-side buttons - Packed to the RIGHT
-        # We pack Sign Up first so it is the furthest right
         self.createButton(self.nav_bar, "Sign Up", "#2D5A27", self.openSignUp)
         self.createButton(self.nav_bar, "Login", "#2D5A27", self.openLogin)
 

@@ -57,7 +57,8 @@ class DashboardPage:
             ("🏠 Dashboard", "Dashboard"),
             ("🔍 Discover", "Discover"),
             ("🔖 Bookmarks", "Book"),
-            ("⚙️ Settings", "Settings")
+            ("⚙️ Settings", "Settings"),
+            ("❓ Q&A", "Q&A")
         ]
 
         for text, ident in menuItems:

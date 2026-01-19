@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 from db import Database
 import random
-from dashboardPage import DashboardPage
+from startScreen import StartScreen
 
 BG = "#ffffff"
 PRIMARY = "#e29578"
@@ -97,6 +97,6 @@ class Login:
 
         if self.db.userExists(email, password):
             self.frame.destroy()
-            DashboardPage(self.root, email)
+            StartScreen(self.root, email)
         else:
             messagebox.showerror("Error", "Invalid credentials.")

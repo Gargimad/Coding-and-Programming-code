@@ -12,31 +12,30 @@ except:
     pass
 
 class StartScreen:
-    def __init__(self, root):
+    def __init__(self, root, userEmail):
         self.root = root
         self.db = Database()
         self.root.title("PIBBIT")
         self.root.state("zoomed")
         self.root.configure(bg="#DAA520")
+        self.userEmail = userEmail
 
         self.nav_bar = tk.Frame(self.root, bg="#DAA520")
         self.nav_bar.pack(side="top", fill="x", padx=20, pady=20)
 
-        # Create the UI elements
         self.createUi() 
         self.createDynamicNav()
 
-        # Results container (below the nav bar)
+        # Create it, but DO NOT pack it here. 
+        # This keeps the home page clear.
         self.resultsContainer = tk.Frame(self.root, bg="#DAA520")
-        self.resultsContainer.pack(fill="x", expand=True, pady=(20, 20))
-
     def createDynamicNav(self):
         self.mb = tk.Menubutton(
             self.nav_bar, text="Explore ⏷", 
             bg="#2D5A27", fg="white", 
             font=("Georgia", 12), width=20, 
             direction='below', relief='flat', cursor="hand2")
-        self.mb.pack(side="left")
+        self.mb.pack(side="left", padx = (0,10))
 
         main_menu = tk.Menu(self.mb, tearoff=0, bg="#2D5A27", fg="white", font=("Georgia", 11), activebackground="#3D7A35")
         self.mb["menu"] = main_menu
@@ -51,10 +50,40 @@ class StartScreen:
                     command=lambda s_id=sub_id, s_name=sub_name: self.displayBusinesses(s_id, s_name) 
                 )
             main_menu.add_cascade(label=cat_name, menu=sub_menu)
+        if not self.userEmail:
+            self.createButton(self.nav_bar, "Sign Up", "#2D5A27", self.openSignUp)
+            self.createButton(self.nav_bar, "Login", "#2D5A27", self.openLogin)
+            
+        else:
+            print("Hi")
+            
+            self.coupsNDeals = tk.Button(self.nav_bar, text="Coupons and Deals", 
+            bg="#2D5A27", fg="white", 
+            font=("Georgia", 12), width=20,relief='flat', cursor="hand2")
+            self.coupsNDeals.pack(side="left", padx= (0,10))
+            
+            self.qna= tk.Button(self.nav_bar, text= "Q&A",
+            bg="#2D5A27", fg="white", 
+            font=("Georgia", 12), width=20,relief='flat', cursor="hand2")
+            self.qna.pack(side="left", padx= (0,10))
+            
+            self.bookmarks= tk.Button(self.nav_bar, text= "Bookmarks",
+            bg="#2D5A27", fg="white", 
+            font=("Georgia", 12), width=20,relief='flat', cursor="hand2")
+            self.bookmarks.pack(side="left", padx= (0,10))
+            
+            self.profile_btn = tk.Menubutton(self.nav_bar, text="👤 Profile ✎", font=("Arial", 11),
+                                         bg = "#DAA520", relief="flat", cursor="hand2", width = 20)
+            self.profile_btn.pack(side="right")
 
-        self.createButton(self.nav_bar, "Sign Up", "#2D5A27", self.openSignUp)
-        self.createButton(self.nav_bar, "Login", "#2D5A27", self.openLogin)
+            profile_menu = tk.Menu(self.profile_btn, tearoff=0, bg="white", fg="black")
+            profile_menu.add_command(label="Edit Profile")
+            profile_menu.add_command(label="Settings")
+            profile_menu.add_separator()
+            profile_menu.add_command(label="Logout")
+            self.profile_btn["menu"] = profile_menu
 
+        
     def createButton(self, parent, text, color, command):
         btn = tk.Button(
             parent, text=text, font=("Georgia", 12, "bold"),
@@ -71,37 +100,67 @@ class StartScreen:
 
     def fetchBusinessesBySubs(self, sub_id):
         return self.db.fetchBusinessesBySubs(sub_id)
-
+    
     def displayBusinesses(self, sub_id, sub_name):
-        # Clear previous content
-        for widget in self.mainPageFrame.winfo_children():
-            widget.destroy()
+        # 1. Hide the home page logo/slogan
+        self.mainPageFrame.place_forget()
+
+        # 2. Clear the results container
         for widget in self.resultsContainer.winfo_children():
             widget.destroy()
 
-        tk.Label(self.resultsContainer, text=f"Results for {sub_name}:", 
+        # 3. NOW pack the container so it takes up the full screen
+        self.resultsContainer.pack(fill="both", expand=True)
+
+        # 4. Setup Scrollbar and Canvas
+        canvas = tk.Canvas(self.resultsContainer, bg="#DAA520", highlightthickness=0)
+        scrollbar = tk.Scrollbar(self.resultsContainer, orient="vertical", command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas, bg="#DAA520")
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas_window = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+
+        # Sync width
+        def configure_canvas(event):
+            canvas.itemconfig(canvas_window, width=event.width)
+        canvas.bind('<Configure>', configure_canvas)
+
+        canvas.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+
+        # 5. Add Labels and Business Cards
+        tk.Label(scrollable_frame, text=f"Results for {sub_name}:", 
                  font=("Georgia", 20, "bold"), bg="#DAA520", pady=15).pack()
         
         businesses = self.fetchBusinessesBySubs(sub_id) 
         
         if not businesses:
-            tk.Label(self.resultsContainer, text="No businesses found in this category.", bg="#DAA520").pack()
+            tk.Label(scrollable_frame, text="No businesses found in this category.", bg="#DAA520").pack()
         else:
             for biz_id, biz_name, rating, review_count, description, website_link in businesses:
-                bizCard = tk.Frame(self.resultsContainer, bg="#DDE0D6", highlightbackground="#6B8E23", 
-                                 highlightthickness=2, padx=15, pady=10)
-                bizCard.pack(fill="x", pady=5, padx=50)               
+                bizCard = tk.Frame(scrollable_frame, bg="#DDE0D6", highlightbackground="#6B8E23", 
+                                   highlightthickness=2, padx=15, pady=10)
+                bizCard.pack(fill="x", pady=10, padx=50)               
                 
                 tk.Label(bizCard, text=biz_name, font=("Georgia", 18), bg="#DDE0D6").pack(anchor="w")
                 
                 stars = "★" * int(float(rating)) + "☆" * (5 - int(float(rating)))
                 tk.Label(bizCard, text=f"{stars} {rating}", font=("Georgia", 12), 
                          bg="#DDE0D6", fg="#E1AD01").pack(anchor="w")
-                
                 tk.Label(bizCard, text=f"{description}", font=("Georgia", 10), bg="#DDE0D6").pack(anchor='w')
                 
-                tk.Button(bizCard, text="Website link", bg="#E4937A", relief="flat", padx=10, 
-                          command=lambda link=website_link: self.openWebsite(link)).pack(anchor="e")
+                tk.Button(bizCard, text="Website Link", bg="#E4937A", relief="flat", padx=10, 
+                          command=lambda link=website_link: self.openWebsite(link)).pack(side="right", padx=(10,0))
+                tk.Button(bizCard, text="Write a Review", bg="#A2D98E", relief="flat", padx=10, 
+                          ).pack(side="right", padx = (0,10))
+                tk.Button(bizCard, text="Rate Business", bg="#A2D98E", relief="flat", padx=10, 
+                          ).pack(side="right", padx = (0,10))
+                
 
     def openWebsite(self, website_link):
         try:

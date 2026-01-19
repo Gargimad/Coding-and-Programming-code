@@ -4,6 +4,7 @@ from PIL import Image, ImageTk
 from db import Database
 import webbrowser
 import os
+from qna import QnaPage
 
 try:
     from ctypes import windll
@@ -26,9 +27,9 @@ class StartScreen:
         self.createUi() 
         self.createDynamicNav()
 
-        # Create it, but DO NOT pack it here. 
-        # This keeps the home page clear.
+        # The container for dynamic content (Results or Q&A)
         self.resultsContainer = tk.Frame(self.root, bg="#DAA520")
+
     def createDynamicNav(self):
         self.mb = tk.Menubutton(
             self.nav_bar, text="Explore ⏷", 
@@ -50,30 +51,30 @@ class StartScreen:
                     command=lambda s_id=sub_id, s_name=sub_name: self.displayBusinesses(s_id, s_name) 
                 )
             main_menu.add_cascade(label=cat_name, menu=sub_menu)
+
         if not self.userEmail:
             self.createButton(self.nav_bar, "Sign Up", "#2D5A27", self.openSignUp)
             self.createButton(self.nav_bar, "Login", "#2D5A27", self.openLogin)
-            
         else:
-            print("Hi")
-            
             self.coupsNDeals = tk.Button(self.nav_bar, text="Coupons and Deals", 
-            bg="#2D5A27", fg="white", 
-            font=("Georgia", 12), width=20,relief='flat', cursor="hand2")
-            self.coupsNDeals.pack(side="left", padx= (0,10))
+                                        bg="#2D5A27", fg="white", font=("Georgia", 12), 
+                                        width=20, relief='flat', cursor="hand2")
+            self.coupsNDeals.pack(side="left", padx=(0,10))
             
-            self.qna= tk.Button(self.nav_bar, text= "Q&A",
-            bg="#2D5A27", fg="white", 
-            font=("Georgia", 12), width=20,relief='flat', cursor="hand2")
-            self.qna.pack(side="left", padx= (0,10))
+            # FIXED Q&A BUTTON
+            self.qna_btn = tk.Button(self.nav_bar, text="Q&A",
+                                     bg="#2D5A27", fg="white", font=("Georgia", 12), 
+                                     width=20, relief='flat', cursor="hand2", 
+                                     command=self.showQna)
+            self.qna_btn.pack(side="left", padx=(0,10))
             
-            self.bookmarks= tk.Button(self.nav_bar, text= "Bookmarks",
-            bg="#2D5A27", fg="white", 
-            font=("Georgia", 12), width=20,relief='flat', cursor="hand2")
-            self.bookmarks.pack(side="left", padx= (0,10))
+            self.bookmarks = tk.Button(self.nav_bar, text="Bookmarks",
+                                      bg="#2D5A27", fg="white", font=("Georgia", 12), 
+                                      width=20, relief='flat', cursor="hand2")
+            self.bookmarks.pack(side="left", padx=(0,10))
             
             self.profile_btn = tk.Menubutton(self.nav_bar, text="👤 Profile ✎", font=("Arial", 11),
-                                         bg = "#DAA520", relief="flat", cursor="hand2", width = 20)
+                                            bg="#DAA520", relief="flat", cursor="hand2", width=20)
             self.profile_btn.pack(side="right")
 
             profile_menu = tk.Menu(self.profile_btn, tearoff=0, bg="white", fg="black")
@@ -83,13 +84,33 @@ class StartScreen:
             profile_menu.add_command(label="Logout")
             self.profile_btn["menu"] = profile_menu
 
+    def showQna(self):
+        """Clears the screen and initializes the Q&A page."""
+        # Hide home screen elements
+        self.mainPageFrame.place_forget()
         
+        # Clear any existing content in resultsContainer
+    
+        for widget in self.resultsContainer.winfo_children():
+            widget.destroy()
+            
+        self.resultsContainer.pack(fill="both", expand=True)
+
+        # Colors expected by the QnaPage class
+        colors = {
+            'bg': "#DAA520",
+            'darkText': "black",
+            'navBg': "#2D5A27"
+        }
+
+        # Initialize and draw the Q&A content inside the results container
+        qna_view = QnaPage(self.resultsContainer, colors)
+        qna_view.draw()
+
     def createButton(self, parent, text, color, command):
-        btn = tk.Button(
-            parent, text=text, font=("Georgia", 12, "bold"),
-            bg=color, fg="white", width=15, pady=8,
-            bd=0, command=command, cursor="hand2"
-        )
+        btn = tk.Button(parent, text=text, font=("Georgia", 12, "bold"),
+                        bg=color, fg="white", width=15, pady=8,
+                        bd=0, command=command, cursor="hand2")
         btn.pack(side="right", padx=10)
 
     def fetchCategories(self):
@@ -102,29 +123,18 @@ class StartScreen:
         return self.db.fetchBusinessesBySubs(sub_id)
     
     def displayBusinesses(self, sub_id, sub_name):
-        # 1. Hide the home page logo/slogan
         self.mainPageFrame.place_forget()
-
-        # 2. Clear the results container
         for widget in self.resultsContainer.winfo_children():
             widget.destroy()
 
-        # 3. NOW pack the container so it takes up the full screen
         self.resultsContainer.pack(fill="both", expand=True)
-
-        # 4. Setup Scrollbar and Canvas
         canvas = tk.Canvas(self.resultsContainer, bg="#DAA520", highlightthickness=0)
         scrollbar = tk.Scrollbar(self.resultsContainer, orient="vertical", command=canvas.yview)
         scrollable_frame = tk.Frame(canvas, bg="#DAA520")
 
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
-
+        scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
         canvas_window = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-
-        # Sync width
+        
         def configure_canvas(event):
             canvas.itemconfig(canvas_window, width=event.width)
         canvas.bind('<Configure>', configure_canvas)
@@ -133,20 +143,17 @@ class StartScreen:
         scrollbar.pack(side="right", fill="y")
         canvas.pack(side="left", fill="both", expand=True)
 
-        # 5. Add Labels and Business Cards
         tk.Label(scrollable_frame, text=f"Results for {sub_name}:", 
                  font=("Georgia", 20, "bold"), bg="#DAA520", pady=15).pack()
         
         businesses = self.fetchBusinessesBySubs(sub_id) 
-        
         if not businesses:
-            tk.Label(scrollable_frame, text="No businesses found in this category.", bg="#DAA520").pack()
+            tk.Label(scrollable_frame, text="No businesses found.", bg="#DAA520").pack()
         else:
             for biz_id, biz_name, rating, review_count, description, website_link in businesses:
                 bizCard = tk.Frame(scrollable_frame, bg="#DDE0D6", highlightbackground="#6B8E23", 
                                    highlightthickness=2, padx=15, pady=10)
                 bizCard.pack(fill="x", pady=10, padx=50)               
-                
                 tk.Label(bizCard, text=biz_name, font=("Georgia", 18), bg="#DDE0D6").pack(anchor="w")
                 
                 stars = "★" * int(float(rating)) + "☆" * (5 - int(float(rating)))
@@ -156,51 +163,31 @@ class StartScreen:
                 
                 tk.Button(bizCard, text="Website Link", bg="#E4937A", relief="flat", padx=10, 
                           command=lambda link=website_link: self.openWebsite(link)).pack(side="right", padx=(10,0))
-                tk.Button(bizCard, text="Write a Review", bg="#A2D98E", relief="flat", padx=10, 
-                          ).pack(side="right", padx = (0,10))
-                tk.Button(bizCard, text="Rate Business", bg="#A2D98E", relief="flat", padx=10, 
-                          ).pack(side="right", padx = (0,10))
-                
 
     def openWebsite(self, website_link):
         try:
             webbrowser.open(website_link, new=2)
         except Exception as e:
-            print(f"Error opening website: {e}")
+            print(f"Error: {e}")
 
     def createUi(self):
-        # This frame stays centered for the logo/title
         self.mainPageFrame = tk.Frame(self.root, bg="#DAA520")
         self.mainPageFrame.place(relx=0.5, rely=0.5, anchor="center")
-
         try:
-            # RELATIVE PATH: Looks for logo.png in the same folder as this script
             script_dir = os.path.dirname(os.path.abspath(__file__))
             imgPath = os.path.join(script_dir, "logo.png")
-            
-            img = Image.open(imgPath)
-            img = img.resize((500, 320))
+            img = Image.open(imgPath).resize((500, 320))
             photo = ImageTk.PhotoImage(img)
-            
             logoLabel = tk.Label(self.mainPageFrame, image=photo, bg="#DAA520", bd=0)
             logoLabel.image = photo 
             logoLabel.grid(row=0, column=0, padx=0)
-
-        except Exception as e:
-            print(f"Image load error: {e}")
+        except:
             tk.Label(self.mainPageFrame, text="[Logo Error]", bg="#DAA520", fg="white").grid(row=0, column=0)
 
-        titleLabel = tk.Label(
-            self.mainPageFrame, text="PIBBIT", font=("Georgia", 100, "bold"),
-            fg="black", bg="#DAA520"
-        )
-        titleLabel.grid(row=0, column=1, sticky="w")
-
-        sloganLabel = tk.Label(
-            self.mainPageFrame, text="Local Business becomes just a Pibbit Away",
-            font=("Georgia", 25), fg="#6E2F20", bg="#DAA520"
-        )
-        sloganLabel.grid(row=1, column=1, sticky="w")
+        tk.Label(self.mainPageFrame, text="PIBBIT", font=("Georgia", 100, "bold"),
+                 fg="black", bg="#DAA520").grid(row=0, column=1, sticky="w")
+        tk.Label(self.mainPageFrame, text="Local Business becomes just a Pibbit Away",
+                 font=("Georgia", 25), fg="#6E2F20", bg="#DAA520").grid(row=1, column=1, sticky="w")
 
     def openSignUp(self):
         self.root.destroy()

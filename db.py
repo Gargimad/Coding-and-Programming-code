@@ -98,6 +98,11 @@ class Database:
             (sub_id,)
         )
         return self.pibbitCursor.fetchall()
+    def fetchAllBusinesses(self):
+        self.pibbitCursor.execute(
+            "SELECT biz_id, biz_name, rating, review_count, description, website_link FROM businesses ORDER by biz_name ASC"
+        )
+        return self.pibbitCursor.fetchall()
 
     def close(self):
         self.connection.close()

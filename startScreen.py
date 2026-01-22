@@ -23,12 +23,12 @@ class StartScreen:
 
         self.nav_bar = tk.Frame(self.root, bg="#DAA520")
         self.nav_bar.pack(side="top", fill="x", padx=20, pady=20)
-
+        self.resultsContainer = tk.Frame(self.root, bg="#DAA520")
         self.createUi() 
         self.createDynamicNav()
 
         # The container for dynamic content (Results or Q&A)
-        self.resultsContainer = tk.Frame(self.root, bg="#DAA520")
+        
 
     def createDynamicNav(self):
         self.mb = tk.Menubutton(
@@ -36,8 +36,8 @@ class StartScreen:
             bg="#2D5A27", fg="white", 
             font=("Georgia", 12), width=20, 
             direction='below', relief='flat', cursor="hand2")
+        #self.mb.pack(side="left", padx = (0,10), command = self.displayBusinesses(1, 'Explore'))
         self.mb.pack(side="left", padx = (0,10))
-
         main_menu = tk.Menu(self.mb, tearoff=0, bg="#2D5A27", fg="white", font=("Georgia", 11), activebackground="#3D7A35")
         self.mb["menu"] = main_menu
         
@@ -121,6 +121,8 @@ class StartScreen:
 
     def fetchBusinessesBySubs(self, sub_id):
         return self.db.fetchBusinessesBySubs(sub_id)
+    def fetchAllBusinesses(self):
+        return self.db.fetchAllBusinesses()
     
     def displayBusinesses(self, sub_id, sub_name):
         self.mainPageFrame.place_forget()
@@ -143,10 +145,12 @@ class StartScreen:
         scrollbar.pack(side="right", fill="y")
         canvas.pack(side="left", fill="both", expand=True)
 
-        tk.Label(scrollable_frame, text=f"Results for {sub_name}:", 
+        if sub_id == 1:
+            businesses = self.fetchAllBusinesses()
+        else:
+            tk.Label(scrollable_frame, text=f"Results for {sub_name}:", 
                  font=("Georgia", 20, "bold"), bg="#DAA520", pady=15).pack()
-        
-        businesses = self.fetchBusinessesBySubs(sub_id) 
+            businesses = self.fetchBusinessesBySubs(sub_id) 
         if not businesses:
             tk.Label(scrollable_frame, text="No businesses found.", bg="#DAA520").pack()
         else:
@@ -155,14 +159,42 @@ class StartScreen:
                                    highlightthickness=2, padx=15, pady=10)
                 bizCard.pack(fill="x", pady=10, padx=50)               
                 tk.Label(bizCard, text=biz_name, font=("Georgia", 18), bg="#DDE0D6").pack(anchor="w")
-                
                 stars = "★" * int(float(rating)) + "☆" * (5 - int(float(rating)))
                 tk.Label(bizCard, text=f"{stars} {rating}", font=("Georgia", 12), 
                          bg="#DDE0D6", fg="#E1AD01").pack(anchor="w")
                 tk.Label(bizCard, text=f"{description}", font=("Georgia", 10), bg="#DDE0D6").pack(anchor='w')
+                tk.Button(
+                    bizCard,
+                    text="Website Link",
+                    bg="#E4937A",
+                    relief="flat",
+                    padx=10,
+                    cursor="hand2",
+                    command=lambda link=website_link: self.openWebsite(link)
+                ).pack(side="right", padx=(10, 0))
+
+                # ✅ Only show these buttons AFTER login
+                if self.userEmail:
+                    tk.Button(
+                        bizCard,
+                        text="Rate Business",
+                        bg="#A2D98E",
+                        relief="flat",
+                        padx=10,
+                        cursor="hand2"
+                    ).pack(side="right", padx=(10, 0))
+
+                    tk.Button(
+                        bizCard,
+                        text="Write a Review",
+                        bg="#A2D98E",
+                        relief="flat",
+                        padx=10,
+                        cursor="hand2"
+                    ).pack(side="right", padx=(10, 0))
+
                 
-                tk.Button(bizCard, text="Website Link", bg="#E4937A", relief="flat", padx=10, 
-                          command=lambda link=website_link: self.openWebsite(link)).pack(side="right", padx=(10,0))
+                
 
     def openWebsite(self, website_link):
         try:
@@ -201,4 +233,4 @@ class StartScreen:
         from login import Login
         root = tk.Tk()
         Login(root)
-        root.mainloop()
+        root.mainloop()        

@@ -13,6 +13,10 @@ from db import Database
 import webbrowser
 import os
 from qna import QnaPage
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import inch
+import tempfile
 
 #Try/Except to help features fit into computers with different sizes
 try: 
@@ -42,14 +46,13 @@ class StartScreen:
     def createDynamicNav(self):
         # Adding a logo button to the left of the Explore button
         try: 
-            homeLogo = Image.open(os.path.join(os.path.dirname(__file__), "logo.png")).resize((120, 72))
+            homeLogo = Image.open(os.path.join(os.path.dirname(__file__), "homeLogo.png")).resize((50, 50))
             self.homeLogo = ImageTk.PhotoImage(homeLogo)
             tk.Button(self.navBar, image=self.homeLogo, bg="#DAA520", bd=0, cursor="hand2", 
                       command=lambda: [self.resultsContainer.pack_forget(), self.mainPageFrame.place(relx=0.5, rely=0.5, anchor="center")]
                      ).pack(side="left", padx=(0, 10))
         except:
             pass
-
         #Creating dynamic menubar dropdowns that sorts businesses by category name
         self.mb = tk.Menubutton(
             self.navBar, text="Explore ⏷", 
@@ -165,7 +168,7 @@ class StartScreen:
             
             success = self.db.updateBusinessRating(biz_id, self.selected_rating)
             if success:
-                messagebox.showinfo("Success", "Business rated successfully!")
+                #messagebox.showinfo("Success", "Business rated successfully!")
                 popup.destroy()
                 self.displayBusinesses(1, "Explore") 
             else:
@@ -173,9 +176,51 @@ class StartScreen:
 
         tk.Button(popup, text="Submit Rating", bg="#2D5A27", fg="white", font=("Georgia", 10, "bold"),
                   padx=20, command=submit_rating, cursor="hand2").pack(pady=25)
-        
 
     #Fetches categories from category table in pibbit database
+    def openReviewPopup(self, biz_id, biz_name):
+        #opens new screen
+        popup = tk.Toplevel(self.root)
+        popup.title(f"Review {biz_name}")
+        popup.geometry("800x500")
+        popup.configure(bg="#DAA520")
+        popup.grab_set()
+
+        tk.Label(
+            popup,
+            text=f"Write a review for {biz_name}",
+            font=("Georgia", 16, "bold"),
+            bg="#DAA520"
+        ).pack(pady=15)
+
+        #Write review
+        review_box = tk.Text(
+            popup,
+            height=10,
+            font=("Georgia", 11),
+            wrap="word"
+        )
+        review_box.pack(padx=20, pady=10, fill="both", expand=True)
+
+        def submit_review():
+            review_text = review_box.get("1.0", "end").strip()
+            if not review_text:
+                return
+
+            # TODO: save to DB
+            # self.db.saveReview(self.userEmail, biz_id, review_text)
+
+            popup.destroy()
+
+        tk.Button(
+            popup,
+            text="Submit Review",
+            bg="#2D5A27",
+            fg="white",
+            font=("Georgia", 12),
+            relief="flat",
+            command=submit_review
+        ).pack(pady=15)
     def fetchCategories(self):
         return self.db.fetchCategories()
 
@@ -190,7 +235,27 @@ class StartScreen:
     #Fetches ALL businesses from businesses table from pibbit database when explore button is clicked
     def fetchAllBusinesses(self):
         return self.db.fetchAllBusinesses()
-    
+
+    def sortByRatings(self, businesses):
+        """Sorts businesses by rating (highest first)"""
+        if not businesses: return
+        sorted_list = sorted(
+            businesses,
+            key=lambda b: (float(b[2]) if b[2] not in (None, "", "N/A") else 0.0),
+            reverse=True
+        )
+        self.renderBusinessCards(sorted_list)
+
+    def sortByReviews(self, businesses):
+        """Sorts businesses by review count (highest first)"""
+        if not businesses: return
+        sorted_list = sorted(
+            businesses,
+            key=lambda b: (int(b[3]) if b[3] else 0),
+            reverse=True
+        )
+        self.renderBusinessCards(sorted_list)
+
     # Internal function to handle bookmark click and UI update
     def onBookmarkToggle(self, biz_id, button):
         res = self.db.toggleBookmark(self.userEmail, biz_id)
@@ -210,9 +275,10 @@ class StartScreen:
         #Creates the canvas that holds scrolling bar
         canvas = tk.Canvas(self.resultsContainer, bg="#DAA520", highlightthickness=0)
         scrollbar = tk.Scrollbar(self.resultsContainer, orient="vertical", command=canvas.yview)
-        scrollingFrame = tk.Frame(canvas, bg="#DAA520")
-        scrollingFrame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-        canvas_window = canvas.create_window((0, 0), window=scrollingFrame, anchor="nw")
+        self.scrollingFrame = tk.Frame(canvas, bg="#DAA520")
+        self.scrollingFrame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas_window = canvas.create_window((0, 0), window=self.scrollingFrame, anchor="nw")
+        
         #Calls the function that configures the canvas created before
         def configure_canvas(event):
             canvas.itemconfig(canvas_window, width=event.width)
@@ -221,59 +287,96 @@ class StartScreen:
         canvas.configure(yscrollcommand=scrollbar.set)
         scrollbar.pack(side="right", fill="y")
         canvas.pack(side="left", fill="both", expand=True)
+
+        # Container for sorting buttons and title
+        top_bar = tk.Frame(self.scrollingFrame, bg="#DAA520")
+        top_bar.pack(fill="x", pady=10, padx=50)
+
         #If explore is clicked, it displays all the businesses
         if sub_id == 1:
-            tk.Label(scrollingFrame, text="All Businesses:", 
-                  font=("Georgia", 20, "bold"), bg="#DAA520", pady=15).pack()
+            tk.Label(top_bar, text="All Businesses:", 
+                  font=("Georgia", 20, "bold"), bg="#DAA520").pack(side="left")
             businesses = self.fetchAllBusinesses()
         elif sub_id == -1:
             # Displays businesses that the user has saved
-            tk.Label(scrollingFrame, text="Your Bookmarked Businesses:", 
-                  font=("Georgia", 20, "bold"), bg="#DAA520", pady=15).pack()
+            tk.Label(top_bar, text="Your Bookmarked Businesses:", 
+                  font=("Georgia", 20, "bold"), bg="#DAA520").pack(side="left")
             businesses = self.db.fetchBookmarkedBusinesses(self.userEmail)
         else:
-        #If subcategory is cliked, it displays businesses under that subcategory
-            tk.Label(scrollingFrame, text=f"Results for {sub_name}:", 
-                  font=("Georgia", 20, "bold"), bg="#DAA520", pady=15).pack()
+            tk.Label(top_bar, text=f"Results for {sub_name}:", 
+                  font=("Georgia", 20, "bold"), bg="#DAA520").pack(side="left")
             businesses = self.fetchBusinessesBySubs(sub_id) 
-        #If there are no businesses in sub id, this messages shows up
-        if not businesses:
-            tk.Label(scrollingFrame, text="No businesses found.", bg="#DAA520", font=("Georgia", 12)).pack()
-        else:
-        #Displaying each business card when businesses exist inside subcategory
-            for biz_id, biz_name, rating, review_count, description, website_link in businesses:
-                #Skipping fields that are None
-                if any(field is None for field in [biz_name, description, website_link]):
-                    continue
-                #Creating specific business card
-                bizCard = tk.Frame(scrollingFrame, bg="#DDE0D6", highlightbackground="#6B8E23", 
-                                   highlightthickness=2, padx=15, pady=10)
-                bizCard.pack(fill="x", pady=10, padx=50)               
-                tk.Label(bizCard, text=biz_name, font=("Georgia", 18, "bold"), bg="#DDE0D6").pack(anchor="w")
-                #Rating display
-                if rating is not None: 
-                    stars = "★" * int(float(rating)) + "☆" * (5 - int(float(rating)))
-                    tk.Label(bizCard, text=f"{stars} {rating}", font=("Georgia", 12), 
-                         bg="#DDE0D6", fg="#E1AD01").pack(anchor="w")
-                #Displaying description
-                tk.Label(bizCard, text=f"{description}", font=("Georgia", 10), bg="#DDE0D6", wraplength=800, justify="left").pack(anchor='w')
-                #Desplay website link button
-                tk.Button(bizCard, text="Website Link", bg="#E4937A", relief="flat", padx=10, cursor="hand2",
-                          command=lambda link=website_link: self.openWebsite(link)).pack(side="right", padx=(10, 0))
-                #Buttons that appear on bizCard only after login
-                if self.userEmail:
-                    # Logic for bookmarking button state
-                    is_saved = self.db.isBookmarked(self.userEmail, biz_id)
-                    bm_text = "🔖" if is_saved else "⭐"
-                    bm_color = "#E1AD01" if is_saved else "#A2D98E"
-                    
-                    bm_btn = tk.Button(bizCard, text=bm_text, bg=bm_color, relief="flat", padx=10, cursor="hand2")
-                    bm_btn.config(command=lambda b=biz_id, btn=bm_btn: self.onBookmarkToggle(b, btn))
-                    bm_btn.place(relx=1.0, rely=0.0, x=-10, y=10, anchor="ne")
 
-                    tk.Button(bizCard, text="Rate Business", bg="#A2D98E", relief="flat", padx=10, cursor="hand2",
-                              command=lambda b_id=biz_id, b_name=biz_name: self.openRatingPopup(b_id, b_name)).pack(side="right", padx=(10, 0))
-                    tk.Button(bizCard, text="Write a Review", bg="#A2D98E", relief="flat", padx=10, cursor="hand2").pack(side="right", padx=(10, 0))
+        # Sorting Buttons
+        button_frame = tk.Frame(top_bar, bg="#DAA520")
+        button_frame.pack(side="right")
+        
+        tk.Button(button_frame, text="Highest Ratings", bg="#2D5A27", fg="white", 
+                  font=("Georgia", 10), width=15, relief="flat", cursor="hand2",
+                  command=lambda: self.sortByRatings(businesses)).pack(side="left", padx=5)
+
+        tk.Button(button_frame, text="Most Reviewed", bg="#2D5A27", fg="white", 
+                  font=("Georgia", 10), width=15, relief="flat", cursor="hand2",
+                  command=lambda: self.sortByReviews(businesses)).pack(side="left", padx=5)
+        tk.Button(button_frame, text="🖨️", bg="#DAA520", fg="white", 
+                  font=("Georgia", 15), width=4, relief="flat", cursor="hand2",
+                  command= lambda: self.printBusinesses(businesses, sub_name)).pack(side="left", padx = 2)
+
+        # Container where cards will actually be drawn
+        self.cards_frame = tk.Frame(self.scrollingFrame, bg="#DAA520")
+        self.cards_frame.pack(fill="both", expand=True)
+        
+        self.renderBusinessCards(businesses)
+
+    def renderBusinessCards(self, businesses):
+        # Clear existing cards first
+        for widget in self.cards_frame.winfo_children():
+            widget.destroy()
+
+        if not businesses:
+            tk.Label(self.cards_frame, text="No businesses found.", bg="#DAA520", font=("Georgia", 12)).pack(pady=20)
+            return
+
+        for biz_id, biz_name, rating, review_count, description, website_link in businesses:
+            if any(field is None for field in [biz_name, description, website_link]):
+                continue
+            
+            bizCard = tk.Frame(self.cards_frame, bg="#DDE0D6", highlightbackground="#6B8E23", 
+                               highlightthickness=2, padx=15, pady=10)
+            bizCard.pack(fill="x", pady=10, padx=50)               
+            
+            tk.Label(bizCard, text=biz_name, font=("Georgia", 18, "bold"), bg="#DDE0D6").pack(anchor="w")
+            
+            #Rating display
+            rating_val = float(rating) if rating else 0.0
+            stars = "★" * int(rating_val) + "☆" * (5 - int(rating_val))
+            tk.Label(bizCard, text=f"{stars} {rating_val} ({review_count or 0} reviews)", 
+                     font=("Georgia", 12), bg="#DDE0D6", fg="#E1AD01").pack(anchor="w")
+            
+            tk.Label(bizCard, text=f"{description}", font=("Georgia", 10), bg="#DDE0D6", 
+                     wraplength=800, justify="left").pack(anchor='w', pady=5)
+            
+            # Action Buttons
+            btn_container = tk.Frame(bizCard, bg="#DDE0D6")
+            btn_container.pack(fill="x", side="bottom")
+
+            tk.Button(btn_container, text="Website Link", bg="#E4937A", relief="flat", padx=10, cursor="hand2",
+                      command=lambda link=website_link: self.openWebsite(link)).pack(side="right", padx=5)
+
+            if self.userEmail:
+                is_saved = self.db.isBookmarked(self.userEmail, biz_id)
+                bm_text = "🔖 Bookmarked" if is_saved else "☆ Bookmark"
+                bm_color = "#E1AD01" if is_saved else "#A2D98E"
+                
+                bm_btn = tk.Button(bizCard, text=bm_text, bg=bm_color, relief="flat", padx=10, cursor="hand2")
+                bm_btn.config(command=lambda b=biz_id, btn=bm_btn: self.onBookmarkToggle(b, btn))
+                bm_btn.place(relx=1.0, rely=0.0, x=-10, y=10, anchor="ne")
+
+                tk.Button(btn_container, text="Rate Business", bg="#A2D98E", relief="flat", padx=10, cursor="hand2",
+                          command=lambda b_id=biz_id, b_name=biz_name: self.openRatingPopup(b_id, b_name)).pack(side="right", padx=(10,0))
+                tk.Button(btn_container, text="Write a Review", bg="#A2D98E", relief="flat", padx=10, cursor="hand2", command=lambda b_id=biz_id, b_name=biz_name:
+                        self.openReviewPopup(b_id, b_name)).pack(side="right", padx=(10, 0))
+
 
     #Function that gets called when website link is clicked
     def openWebsite(self, website_link):
@@ -301,7 +404,71 @@ class StartScreen:
                  fg="black", bg="#DAA520").grid(row=0, column=1, sticky="w")
         tk.Label(self.mainPageFrame, text="Local business now becomes just a PIBBIT away",
                  font=("Georgia", 25), fg="#6E2F20", bg="#DAA520").grid(row=1, column=1, sticky="w")
+        
+    def printBusinesses(self, businesses, category_name):
+        """Generates a professional PDF report without saving it in the project folder."""
+        # FIX: Filter out None/Empty businesses before printing
+        valid_businesses = [b for b in businesses if b[1] and b[1] != "None"]
+        
+        if not valid_businesses:
+            messagebox.showwarning("Print Error", "No valid businesses available to print.")
+            return
 
+        # FIX: Create path in the system temp directory to avoid VS Code folder
+        temp_dir = tempfile.gettempdir()
+        filename = os.path.join(temp_dir, f"{category_name}_Report.pdf")
+        
+        try:
+            c = canvas.Canvas(filename, pagesize=letter)
+            width, height = letter
+            y = height - 1*inch 
+
+            # Header
+            c.setFont("Helvetica-Bold", 20)
+            c.drawString(1*inch, y, "PIBBIT Business Report")
+            y -= 0.3*inch
+            c.setFont("Helvetica", 12)
+            c.drawString(1*inch, y, f"Category: {category_name}")
+            y -= 0.5*inch
+            c.line(1*inch, y + 0.1*inch, 7.5*inch, y + 0.1*inch)
+
+            for biz in valid_businesses:
+                if y < 1.5*inch:
+                    c.showPage()
+                    y = height - 1*inch
+
+                # Unpacking the tuple directly
+                _, name, rating, reviews, desc, link = biz
+                
+                # Business Attributes directly into PDF
+                c.setFont("Helvetica-Bold", 14)
+                c.drawString(1*inch, y, str(name))
+                y -= 0.2*inch
+                
+                c.setFont("Helvetica", 10)
+                c.drawString(1*inch, y, f"Rating: {rating or 0} | Reviews: {reviews or 0}")
+                y -= 0.2*inch
+                
+                c.setFont("Helvetica-Oblique", 10)
+                description = str(desc)
+                if len(description) > 90: description = description[:87] + "..."
+                c.drawString(1*inch, y, description)
+                y -= 0.2*inch
+                
+                c.setFont("Helvetica", 10)
+                c.setFillColorRGB(0, 0, 1) 
+                c.drawString(1*inch, y, f"Website: {link}")
+                c.setFillColorRGB(0, 0, 0) 
+                
+                y -= 0.4*inch 
+
+            c.save()
+            
+            # Open the PDF automatically from the temp location
+            os.startfile(filename)
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not generate PDF: {e}")
     def openSignUp(self):
         self.root.destroy()
         from signup import SignUp

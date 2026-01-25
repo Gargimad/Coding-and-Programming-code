@@ -7,6 +7,7 @@ FBLA- Coding and Programming
 #Imports:
 import tkinter as tk
 from tkinter import *
+from tkinter import messagebox
 from PIL import Image, ImageTk
 from db import Database
 import webbrowser
@@ -19,6 +20,7 @@ try:
     windll.shcore.SetProcessDpiAwareness(1)
 except:
     pass
+
 class StartScreen:
     #Innitializing the class
     def __init__(self, root, userEmail):
@@ -38,6 +40,7 @@ class StartScreen:
         self.createDynamicNav() #Creates the navigation bar at the top
 
     def createDynamicNav(self):
+        # Adding a logo button to the left of the Explore button
         try: 
             homeLogo = Image.open(os.path.join(os.path.dirname(__file__), "logo.png")).resize((120, 72))
             self.homeLogo = ImageTk.PhotoImage(homeLogo)
@@ -46,6 +49,7 @@ class StartScreen:
                      ).pack(side="left", padx=(0, 10))
         except:
             pass
+
         #Creating dynamic menubar dropdowns that sorts businesses by category name
         self.mb = tk.Menubutton(
             self.navBar, text="Explore ⏷", 
@@ -61,7 +65,7 @@ class StartScreen:
         self.mb["menu"] = mainMenu
         #Calling the categories from database
         categories = self.fetchCategories()  
-        #Iterating the categories and subcategories and displaying business on click of each subcategory    
+        #Iterating the categories and subcategories and displaying business on click of each subcategory     
         for cat_id, cat_name in categories:
             sub_menu = tk.Menu(mainMenu, tearoff=0, bg="#2D5A27", fg="white")
             subcategories = self.fetchSubcategories(cat_id)
@@ -106,6 +110,7 @@ class StartScreen:
             profile_menu.add_separator()
             profile_menu.add_command(label="Logout")
             self.profile_btn["menu"] = profile_menu
+
     #Function that displays the QnA
     def showQna(self):
         self.mainPageFrame.place_forget()
@@ -116,21 +121,72 @@ class StartScreen:
         colors = {'bg': "#DAA520", 'darkText': "black", 'navBg': "#2D5A27"}
         qna_view = QnaPage(self.resultsContainer, colors)
         qna_view.draw()
+
     #Defining createButton which makes the login and Signup buttons at the top when user is not logged in
     def createButton(self, parent, text, color, command):
         btn = tk.Button(parent, text=text, font=("Georgia", 12, "bold"),
                         bg=color, fg="white", width=15, pady=8,
                         bd=0, command=command, cursor="hand2")
         btn.pack(side="right", padx=10)
+
+    # Function to create the interactive star rating popup
+    def openRatingPopup(self, biz_id, biz_name):
+        popup = tk.Toplevel(self.root)
+        popup.title(f"Rate {biz_name}")
+        popup.geometry("450x250")
+        popup.configure(bg="#DAA520")
+        
+        tk.Label(popup, text=f"Rate {biz_name}", 
+                 font=("Georgia", 14, "bold"), bg="#DAA520").pack(pady=15)
+
+        star_frame = tk.Frame(popup, bg="#DAA520")
+        star_frame.pack()
+
+        self.selected_rating = 0
+        star_buttons = []
+
+        def set_rating(score):
+            self.selected_rating = score
+            for i, btn in enumerate(star_buttons):
+                btn.config(fg="#FFD700" if i < score else "#C0C0C0")
+
+        for i in range(1, 6):
+            btn = tk.Button(star_frame, text="★", font=("Arial", 30),
+                            bg="#DAA520", fg="#C0C0C0", bd=0, 
+                            activebackground="#DAA520", cursor="hand2",
+                            command=lambda s=i: set_rating(s))
+            btn.pack(side="left")
+            star_buttons.append(btn)
+
+        def submit_rating():
+            if self.selected_rating == 0:
+                messagebox.showwarning("Selection Required", "Please select a star rating!")
+                return
+            
+            success = self.db.updateBusinessRating(biz_id, self.selected_rating)
+            if success:
+                messagebox.showinfo("Success", "Business rated successfully!")
+                popup.destroy()
+                self.displayBusinesses(1, "Explore") 
+            else:
+                messagebox.showerror("Error", "Could not submit rating.")
+
+        tk.Button(popup, text="Submit Rating", bg="#2D5A27", fg="white", font=("Georgia", 10, "bold"),
+                  padx=20, command=submit_rating, cursor="hand2").pack(pady=25)
+        
+
     #Fetches categories from category table in pibbit database
     def fetchCategories(self):
         return self.db.fetchCategories()
+
     #Fetches subcategories based on category id from subcategory table in pibbit database
     def fetchSubcategories(self, cat_id):
         return self.db.fetchSubcategories(cat_id)
+
     #Fetches businesses based on sub id from businesses table in pibbit database    
     def fetchBusinessesBySubs(self, sub_id):
         return self.db.fetchBusinessesBySubs(sub_id)
+
     #Fetches ALL businesses from businesses table from pibbit database when explore button is clicked
     def fetchAllBusinesses(self):
         return self.db.fetchAllBusinesses()
@@ -215,14 +271,17 @@ class StartScreen:
                     bm_btn.config(command=lambda b=biz_id, btn=bm_btn: self.onBookmarkToggle(b, btn))
                     bm_btn.place(relx=1.0, rely=0.0, x=-10, y=10, anchor="ne")
 
-                    tk.Button(bizCard, text="Rate Business", bg="#A2D98E", relief="flat", padx=10, cursor="hand2").pack(side="right", padx=(10, 0))
+                    tk.Button(bizCard, text="Rate Business", bg="#A2D98E", relief="flat", padx=10, cursor="hand2",
+                              command=lambda b_id=biz_id, b_name=biz_name: self.openRatingPopup(b_id, b_name)).pack(side="right", padx=(10, 0))
                     tk.Button(bizCard, text="Write a Review", bg="#A2D98E", relief="flat", padx=10, cursor="hand2").pack(side="right", padx=(10, 0))
+
     #Function that gets called when website link is clicked
     def openWebsite(self, website_link):
         try:
             webbrowser.open(website_link, new=2)
         except Exception as e:
             print(f"Error: {e}")
+
     #Function that creates the homepage when program is runs
     def createUi(self):
         self.mainPageFrame = tk.Frame(self.root, bg="#DAA520")

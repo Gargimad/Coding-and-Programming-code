@@ -1,3 +1,9 @@
+'''
+Gargi Madala, Grace Wu, Dhanvi Ramkumar
+Pibbit Database
+FBLA- Coding and Programming
+26 January 2026
+'''
 import sqlite3
 
 class Database:
@@ -103,6 +109,33 @@ class Database:
             return True
         except sqlite3.Error as e:
             print(f"Database error: {e}")
+            return False
+
+    # Updates business rating and increments review count
+    def updateBusinessRating(self, biz_id, new_score):
+        try:
+            print(f"Business ID: {biz_id}")
+            # Get current rating and review count
+            self.pibbitCursor.execute("SELECT rating, review_count FROM businesses WHERE biz_id = ?", (biz_id,))
+            data = self.pibbitCursor.fetchone()
+            
+            # Use 0.0 if rating is None, otherwise use the float value
+            current_rating = float(data[0]) if data[0] is not None else 0.0
+            current_count = int(data[1]) if data[1] is not None else 0
+            # Recalculate average
+            new_count = current_count + 1
+            new_average = ((current_rating * current_count) + new_score) / new_count
+            # Update the database with the rounded average
+            self.pibbitCursor.execute("""
+                UPDATE businesses 
+                SET rating = ?, review_count = ? 
+                WHERE biz_id = ?
+            """, (round(new_average, 1), new_count, biz_id))
+            
+            self.pibbitConnection.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Rating update error: {e}")
             return False
         
     def fetchCategories(self):

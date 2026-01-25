@@ -1,3 +1,9 @@
+'''
+Gargi Madala, Grace Wu, Dhanvi Ramkumar
+Pibbit Database
+FBLA- Coding and Programming
+26 January 2026
+'''
 import sqlite3
 
 class Database:
@@ -20,7 +26,17 @@ class Database:
                 password TEXT NOT NULL
             )
         """)
+        # NEW: Bookmark table in the users database to persist across logins
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS bookmarks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_email TEXT NOT NULL,
+                biz_id INTEGER NOT NULL,
+                UNIQUE(user_email, biz_id)
+            )
+        """)
         self.connection.commit()
+        
         self.pibbitCursor.executescript("""
             CREATE TABLE IF NOT EXISTS categories (
                 cat_id INTEGER PRIMARY KEY,
@@ -47,28 +63,44 @@ class Database:
         """)
         self.pibbitConnection.commit()
 
+    # --- NEW BOOKMARK LOGIC ---
+    def isBookmarked(self, email, biz_id):
+        self.cursor.execute("SELECT 1 FROM bookmarks WHERE user_email=? AND biz_id=?", (email, biz_id))
+        return self.cursor.fetchone() is not None
+
+    def toggleBookmark(self, email, biz_id):
+        if self.isBookmarked(email, biz_id):
+            self.cursor.execute("DELETE FROM bookmarks WHERE user_email=? AND biz_id=?", (email, biz_id))
+            self.connection.commit()
+            return "removed"
+        else:
+            self.cursor.execute("INSERT INTO bookmarks (user_email, biz_id) VALUES (?, ?)", (email, biz_id))
+            self.connection.commit()
+            return "added"
+
+    def fetchBookmarkedBusinesses(self, email):
+        self.cursor.execute("SELECT biz_id FROM bookmarks WHERE user_email=?", (email,))
+        ids = [row[0] for row in self.cursor.fetchall()]
+        if not ids: return []
+        placeholders = ', '.join(['?'] * len(ids))
+        query = f"SELECT biz_id, biz_name, rating, review_count, description, website_link FROM businesses WHERE biz_id IN ({placeholders})"
+        self.pibbitCursor.execute(query, ids)
+        return self.pibbitCursor.fetchall()
+
     def addUser(self, email, password):
         try:
-            # Note: In a real app, hash the password before saving!
-            self.cursor.execute(
-                "INSERT INTO users (email, password) VALUES (?, ?)", (email, password)
-            )
+            self.cursor.execute("INSERT INTO users (email, password) VALUES (?, ?)", (email, password))
             self.connection.commit()
             return True
         except sqlite3.IntegrityError:
             return False
     
     def userExists(self, email, password):
-        self.cursor.execute(
-            "SELECT * FROM users WHERE email=? AND password=?",
-            (email, password)
-        )
+        self.cursor.execute("SELECT * FROM users WHERE email=? AND password=?", (email, password))
         return self.cursor.fetchone() is not None
     
     def createBusiness(self, businessName, businessDescription, sub_id): 
         try: 
-            # Changed table name from 'pibbit' to 'businesses'
-            # Added sub_id so the business is actually linked to a subcategory
             self.pibbitCursor.execute(
                 "INSERT INTO businesses (biz_name, description, sub_id, rating, review_count) VALUES (?, ?, ?, ?, ?)", 
                 (businessName, businessDescription, sub_id, 0.0, 0) 
@@ -80,28 +112,19 @@ class Database:
             return False
         
     def fetchCategories(self):
-        self.pibbitCursor.execute(
-            "SELECT cat_id, cat_name FROM categories ORDER BY cat_id ASC"
-        )
+        self.pibbitCursor.execute("SELECT cat_id, cat_name FROM categories ORDER BY cat_id ASC")
         return self.pibbitCursor.fetchall()
 
     def fetchSubcategories(self, cat_id):
-        self.pibbitCursor.execute(
-            "SELECT sub_id, sub_name FROM subcategories WHERE cat_id = ? ORDER BY sub_name ASC",
-            (cat_id,)
-        )
+        self.pibbitCursor.execute("SELECT sub_id, sub_name FROM subcategories WHERE cat_id = ? ORDER BY sub_name ASC", (cat_id,))
         return self.pibbitCursor.fetchall()
 
     def fetchBusinessesBySubs(self, sub_id):
-        self.pibbitCursor.execute(
-            "SELECT biz_id, biz_name, rating, review_count, description, website_link FROM businesses WHERE sub_id = ? ORDER by biz_name ASC", 
-            (sub_id,)
-        )
+        self.pibbitCursor.execute("SELECT biz_id, biz_name, rating, review_count, description, website_link FROM businesses WHERE sub_id = ? ORDER by biz_name ASC", (sub_id,))
         return self.pibbitCursor.fetchall()
+
     def fetchAllBusinesses(self):
-        self.pibbitCursor.execute(
-            "SELECT biz_id, biz_name, rating, review_count, description, website_link FROM businesses ORDER by biz_name ASC"
-        )
+        self.pibbitCursor.execute("SELECT biz_id, biz_name, rating, review_count, description, website_link FROM businesses ORDER by biz_name ASC")
         return self.pibbitCursor.fetchall()
 
     def close(self):

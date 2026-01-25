@@ -1,6 +1,6 @@
 '''
 Gargi Madala, Grace Wu, Dhanvi Ramkumar
-Start Screen
+Pibbit Start Screen
 FBLA- Coding and Programming
 26 January 2026
 '''
@@ -38,6 +38,14 @@ class StartScreen:
         self.createDynamicNav() #Creates the navigation bar at the top
 
     def createDynamicNav(self):
+        try: 
+            homeLogo = Image.open(os.path.join(os.path.dirname(__file__), "logo.png")).resize((120, 72))
+            self.homeLogo = ImageTk.PhotoImage(homeLogo)
+            tk.Button(self.navBar, image=self.homeLogo, bg="#DAA520", bd=0, cursor="hand2", 
+                      command=lambda: [self.resultsContainer.pack_forget(), self.mainPageFrame.place(relx=0.5, rely=0.5, anchor="center")]
+                     ).pack(side="left", padx=(0, 10))
+        except:
+            pass
         #Creating dynamic menubar dropdowns that sorts businesses by category name
         self.mb = tk.Menubutton(
             self.navBar, text="Explore ⏷", 
@@ -83,7 +91,8 @@ class StartScreen:
             
             self.bookmarks = tk.Button(self.navBar, text="Bookmarks",
                                       bg="#2D5A27", fg="white", font=("Georgia", 12), 
-                                      width=20, relief='flat', cursor="hand2")
+                                      width=20, relief='flat', cursor="hand2",
+                                      command=lambda: self.displayBusinesses(-1, "Bookmarks"))
             self.bookmarks.pack(side="left", padx=(0,10))
             
             #Profile settings for logged in user
@@ -125,6 +134,15 @@ class StartScreen:
     #Fetches ALL businesses from businesses table from pibbit database when explore button is clicked
     def fetchAllBusinesses(self):
         return self.db.fetchAllBusinesses()
+    
+    # Internal function to handle bookmark click and UI update
+    def onBookmarkToggle(self, biz_id, button):
+        res = self.db.toggleBookmark(self.userEmail, biz_id)
+        if res == "added":
+            button.config(text="🔖 Bookmarked", bg="#E1AD01")
+        else:
+            button.config(text="☆ Bookmark", bg="#A2D98E")
+
     #Displays businesses on the resultsContainer frame with scrollbar frame
     def displayBusinesses(self, sub_id, sub_name):
         self.mainPageFrame.place_forget()
@@ -150,12 +168,17 @@ class StartScreen:
         #If explore is clicked, it displays all the businesses
         if sub_id == 1:
             tk.Label(scrollingFrame, text="All Businesses:", 
-                 font=("Georgia", 20, "bold"), bg="#DAA520", pady=15).pack()
+                  font=("Georgia", 20, "bold"), bg="#DAA520", pady=15).pack()
             businesses = self.fetchAllBusinesses()
+        elif sub_id == -1:
+            # Displays businesses that the user has saved
+            tk.Label(scrollingFrame, text="Your Bookmarked Businesses:", 
+                  font=("Georgia", 20, "bold"), bg="#DAA520", pady=15).pack()
+            businesses = self.db.fetchBookmarkedBusinesses(self.userEmail)
         else:
         #If subcategory is cliked, it displays businesses under that subcategory
             tk.Label(scrollingFrame, text=f"Results for {sub_name}:", 
-                 font=("Georgia", 20, "bold"), bg="#DAA520", pady=15).pack()
+                  font=("Georgia", 20, "bold"), bg="#DAA520", pady=15).pack()
             businesses = self.fetchBusinessesBySubs(sub_id) 
         #If there are no businesses in sub id, this messages shows up
         if not businesses:
@@ -183,6 +206,15 @@ class StartScreen:
                           command=lambda link=website_link: self.openWebsite(link)).pack(side="right", padx=(10, 0))
                 #Buttons that appear on bizCard only after login
                 if self.userEmail:
+                    # Logic for bookmarking button state
+                    is_saved = self.db.isBookmarked(self.userEmail, biz_id)
+                    bm_text = "🔖" if is_saved else "⭐"
+                    bm_color = "#E1AD01" if is_saved else "#A2D98E"
+                    
+                    bm_btn = tk.Button(bizCard, text=bm_text, bg=bm_color, relief="flat", padx=10, cursor="hand2")
+                    bm_btn.config(command=lambda b=biz_id, btn=bm_btn: self.onBookmarkToggle(b, btn))
+                    bm_btn.place(relx=1.0, rely=0.0, x=-10, y=10, anchor="ne")
+
                     tk.Button(bizCard, text="Rate Business", bg="#A2D98E", relief="flat", padx=10, cursor="hand2").pack(side="right", padx=(10, 0))
                     tk.Button(bizCard, text="Write a Review", bg="#A2D98E", relief="flat", padx=10, cursor="hand2").pack(side="right", padx=(10, 0))
     #Function that gets called when website link is clicked
@@ -205,10 +237,10 @@ class StartScreen:
             logoLabel.grid(row=0, column=0, padx=0)
         except:
             tk.Label(self.mainPageFrame, text="[Logo Error]", bg="#DAA520", fg="white", font=("Georgia", 20)).grid(row=0, column=0)
-
+        #Pibbit title and slogan in the first screen when run
         tk.Label(self.mainPageFrame, text="PIBBIT", font=("Georgia", 100, "bold"),
                  fg="black", bg="#DAA520").grid(row=0, column=1, sticky="w")
-        tk.Label(self.mainPageFrame, text="Local Business becomes just a Pibbit Away",
+        tk.Label(self.mainPageFrame, text="Local business now becomes just a PIBBIT away",
                  font=("Georgia", 25), fg="#6E2F20", bg="#DAA520").grid(row=1, column=1, sticky="w")
 
     def openSignUp(self):

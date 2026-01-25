@@ -1,3 +1,9 @@
+'''
+Gargi Madala, Grace Wu, Dhanvi Ramkumar
+Pibbit QNA
+FBLA- Coding and Programming
+26 January 2026
+'''
 import tkinter as tk
 from tkinter import ttk
 

@@ -62,7 +62,7 @@ class StartScreen:
         self.mb.pack(side="left", padx=(0,10))
         
         #On click of explore, the button calls the function displayBusinesses and shows all businesses
-        self.mb.bind("<Button-1>", lambda e: self.displayBusinesses(1, 'Explore'))
+        self.mb.bind("<Button-1>", lambda e: self.displayBusinesses(1, 'Explore',0))
 
         mainMenu = tk.Menu(self.mb, tearoff=0, bg="#2D5A27", fg="white", font=("Georgia", 11), activebackground="#3D7A35")
         self.mb["menu"] = mainMenu
@@ -75,7 +75,7 @@ class StartScreen:
             for sub_id, sub_name in subcategories:
                 sub_menu.add_command(
                     label=sub_name,
-                    command=lambda sId=sub_id, sName=sub_name: self.displayBusinesses(sId, sName) 
+                    command=lambda sId=sub_id, sName=sub_name: self.displayBusinesses(sId, sName,0) 
                 )
             mainMenu.add_cascade(label=cat_name, menu=sub_menu)
         #Displaying sign up and login button when user has not signed in
@@ -88,6 +88,7 @@ class StartScreen:
             self.coupsNDeals = tk.Button(self.navBar, text="Coupons and Deals", 
                                         bg="#2D5A27", fg="white", font=("Georgia", 12), 
                                         width=20, relief='flat', cursor="hand2")
+            self.coupsNDeals.config(command=self.showAllCouponsPage)
             self.coupsNDeals.pack(side="left", padx=(0,10))
             
             self.qna_btn = tk.Button(self.navBar, text="Q&A",
@@ -99,7 +100,7 @@ class StartScreen:
             self.bookmarks = tk.Button(self.navBar, text="Bookmarks",
                                       bg="#2D5A27", fg="white", font=("Georgia", 12), 
                                       width=20, relief='flat', cursor="hand2",
-                                      command=lambda: self.displayBusinesses(-1, "Bookmarks"))
+                                      command=lambda: self.displayBusinesses(-1, "Bookmarks",0))
             self.bookmarks.pack(side="left", padx=(0,10))
             
             #Profile settings for logged in user
@@ -170,7 +171,7 @@ class StartScreen:
             if success:
                 #messagebox.showinfo("Success", "Business rated successfully!")
                 popup.destroy()
-                self.displayBusinesses(1, "Explore") 
+                self.displayBusinesses(1, "Explore",0) 
             else:
                 messagebox.showerror("Error", "Could not submit rating.")
 
@@ -265,7 +266,7 @@ class StartScreen:
             button.config(text="☆ Bookmark", bg="#A2D98E")
 
     #Displays businesses on the resultsContainer frame with scrollbar frame
-    def displayBusinesses(self, sub_id, sub_name):
+    def displayBusinesses(self, sub_id, sub_name, city_id):
         self.mainPageFrame.place_forget()
         #Destroys container before displaying new information
         for widget in self.resultsContainer.winfo_children():
@@ -302,6 +303,10 @@ class StartScreen:
             tk.Label(top_bar, text="Your Bookmarked Businesses:", 
                   font=("Georgia", 20, "bold"), bg="#DAA520").pack(side="left")
             businesses = self.db.fetchBookmarkedBusinesses(self.userEmail)
+        elif sub_id == 0 and city_id != 0:
+            tk.Label(top_bar, text=f"Businesses in Selected City:", 
+                  font=("Georgia", 20, "bold"), bg="#DAA520").pack(side="left")
+            businesses = self.db.fetchBusinessByCity(city_id)
         else:
             tk.Label(top_bar, text=f"Results for {sub_name}:", 
                   font=("Georgia", 20, "bold"), bg="#DAA520").pack(side="left")
@@ -310,11 +315,20 @@ class StartScreen:
         # Sorting Buttons
         button_frame = tk.Frame(top_bar, bg="#DAA520")
         button_frame.pack(side="right")
-        
+        self.city_mb = tk.Menubutton(button_frame, text="Select GA City ⏷", 
+                             bg="#2D5A27", fg="white", font=("Georgia", 10), 
+                             width=15, relief="flat")
+        self.city_mb.pack(side="left", padx=5)
+
+        # Create the empty Menu object
+        self.city_menu = tk.Menu(self.city_mb, tearoff=0, bg="#2D5A27", fg="white")
+        self.city_mb["menu"] = self.city_menu
+
+        # IMPORTANT: Bind the click event to trigger the dynamic update
+        self.city_mb.bind("<Button-1>", lambda e: self.displayCities())
         tk.Button(button_frame, text="Highest Ratings", bg="#2D5A27", fg="white", 
                   font=("Georgia", 10), width=15, relief="flat", cursor="hand2",
                   command=lambda: self.sortByRatings(businesses)).pack(side="left", padx=5)
-
         tk.Button(button_frame, text="Most Reviewed", bg="#2D5A27", fg="white", 
                   font=("Georgia", 10), width=15, relief="flat", cursor="hand2",
                   command=lambda: self.sortByReviews(businesses)).pack(side="left", padx=5)
@@ -327,7 +341,22 @@ class StartScreen:
         self.cards_frame.pack(fill="both", expand=True)
         
         self.renderBusinessCards(businesses)
-
+    def displayCities(self):
+        self.city_menu.delete(0, 'end')
+        cities = self.db.fetchCities()
+        if not cities:
+            self.city_menu.add_command(label="No cities found", state="disabled")
+            return
+    # 3. Add an "All Cities" option
+        self.city_menu.add_command(label="All Cities", command=lambda: self.displayBusinesses(1, "Explore", 0))
+        self.city_menu.add_separator()
+        for city_id, city_name in cities:
+            self.city_menu.add_command(
+            label=city_name,
+            # Use default arguments in lambda (c_id=city_id) to avoid the "closure" bug
+            command=lambda c_id=city_id, c_name=city_name: self.displayBusinesses(0,0, c_id)
+        )
+            
     def renderBusinessCards(self, businesses):
         # Clear existing cards first
         for widget in self.cards_frame.winfo_children():
@@ -376,6 +405,8 @@ class StartScreen:
                           command=lambda b_id=biz_id, b_name=biz_name: self.openRatingPopup(b_id, b_name)).pack(side="right", padx=(10,0))
                 tk.Button(btn_container, text="Write a Review", bg="#A2D98E", relief="flat", padx=10, cursor="hand2", command=lambda b_id=biz_id, b_name=biz_name:
                         self.openReviewPopup(b_id, b_name)).pack(side="right", padx=(10, 0))
+                tk.Button(btn_container, text="View Coupons", bg="#A2D98E", relief="flat", padx=10, cursor="hand2",
+                          command=lambda b_id=biz_id, b_name=biz_name: self.showBusinessCoupons(b_id, b_name)).pack(side="right", padx=(10, 0))
 
 
     #Function that gets called when website link is clicked
@@ -469,6 +500,57 @@ class StartScreen:
             
         except Exception as e:
             messagebox.showerror("Error", f"Could not generate PDF: {e}")
+    def showBusinessCoupons(self, biz_id, biz_name):
+        # Create a small popup window
+        popup = tk.Toplevel(self.root)
+        popup.title(f"Deals for {biz_name}")
+        popup.geometry("500x400")
+        popup.configure(bg="#DDE0D6")
+
+        tk.Label(popup, text=f"Active Coupons: {biz_name}", 
+                font=("Georgia", 14, "bold"), bg="#DDE0D6", pady=10).pack()
+
+        # Fetch specific coupons
+        coupons = self.db.fetchCouponsByBusiness(biz_id)
+
+        if not coupons:
+            tk.Label(popup, text="No active coupons for this business.", 
+                    font=("Georgia", 11), bg="#DDE0D6").pack(pady=50)
+        else:
+            for title, desc, code, expiry in coupons:
+                f = tk.Frame(popup, bg="white", relief="groove", bd=2, padx=10, pady=10)
+                f.pack(fill="x", padx=20, pady=5)
+                
+                tk.Label(f, text=title, font=("Georgia", 12, "bold"), bg="white", fg="#2D5A27").pack(anchor="w")
+                tk.Label(f, text=desc, font=("Georgia", 10), bg="white", wraplength=400).pack(anchor="w")
+                
+                # The actual code
+                code_lbl = tk.Label(f, text=f"CODE: {code}", font=("Courier", 12, "bold"), 
+                                    bg="#F0F0F0", fg="#6E2F20", padx=5)
+                code_lbl.pack(side="left", pady=5)
+                
+                if expiry:
+                    tk.Label(f, text=f"Expires: {expiry}", font=("Arial", 8), bg="white").pack(side="right")
+    def showAllCouponsPage(self):
+        """Displays all coupons from all businesses in the main results container."""
+        self.mainPageFrame.place_forget()
+        for widget in self.resultsContainer.winfo_children():
+            widget.destroy()
+        self.resultsContainer.pack(fill="both", expand=True)
+
+        tk.Label(self.resultsContainer, text="All Local Deals", font=("Georgia", 24, "bold"), bg="#DAA520").pack(pady=20)
+        
+        # This assumes your db.py has fetchAllCoupons()
+        all_coupons = self.db.fetchAllCoupons() 
+        
+        if not all_coupons:
+            tk.Label(self.resultsContainer, text="No active deals found.", bg="#DAA520").pack()
+        else:
+            # Loop through and create simple labels or frames for each coupon
+            for biz_name, title, code in all_coupons:
+                lbl = tk.Label(self.resultsContainer, text=f"{biz_name}: {title} - Use Code: {code}", 
+                            bg="#DDE0D6", pady=5, font=("Georgia", 12))
+                lbl.pack(fill="x", padx=50, pady=2)
     def openSignUp(self):
         self.root.destroy()
         from signup import SignUp

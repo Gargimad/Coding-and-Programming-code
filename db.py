@@ -60,6 +60,12 @@ class Database:
                 website_link TEXT,
                 FOREIGN KEY(sub_id) REFERENCES subcategories(sub_id)
             );
+            CREATE TABLE IF NOT EXISTS coupons (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                biz_id INTEGER NOT NULL,
+                coupon_text TEXT NOT NULL,
+                FOREIGN KEY(biz_id) REFERENCES businesses(biz_id)
+            );
         """)
         self.pibbitConnection.commit()
 
@@ -153,7 +159,30 @@ class Database:
     def fetchAllBusinesses(self):
         self.pibbitCursor.execute("SELECT biz_id, biz_name, rating, review_count, description, website_link FROM businesses ORDER by biz_name ASC")
         return self.pibbitCursor.fetchall()
-
+    def fetchCities(self):
+        self.pibbitCursor.execute("SELECT city_id, city_name FROM cities ORDER BY city_id ASC")
+        return self.pibbitCursor.fetchall()
+    def fetchBusinessByCity(self, city_id):
+        self.pibbitCursor.execute("SELECT biz_id, biz_name, rating, review_count, description, website_link FROM businesses WHERE city_id = ? ORDER by biz_name ASC", (city_id,))
+        return self.pibbitCursor.fetchall()
+    def fetchCouponsByBusiness(self, biz_id):
+        query = """
+        SELECT title, description, coupon_code, expiry_date 
+        FROM coupons 
+        WHERE biz = ? AND is_active = 1
+        """
+        return self.pibbitCursor.fetchall()
+    
+    def fetchAllCoupons(self):
+        query = """
+        SELECT b.name, c.title, c.description, c.coupon_code, c.expiry_date
+        FROM coupons c
+        INNER JOIN businesses b ON c.business_id = b.id
+        WHERE c.is_active = 1
+        ORDER BY c.expiry_date ASC
+        """
+        self.pibbitCursor.execute(query)
+        return self.pibbitCursor.fetchall()
     def close(self):
         self.connection.close()
         self.pibbitConnection.close()

@@ -39,8 +39,24 @@ class StartScreen:
         self.navBar = tk.Frame(self.root, bg="#DAA520")
         self.navBar.pack(side="top", fill="x", padx=20, pady=20)
         self.resultsContainer = tk.Frame(self.root, bg="#DAA520")
+
+        # Professional Q&A Repository
+        self.qnaData = [
+            ("What is the goal of Pibbit?", "Pibbit aims to revitalize local economies by providing small businesses with a high-visibility digital platform."),
+            ("How do I save a business for later?", "Logged-in users can click the 'Bookmark' button on any business card to save it to their personal collection."),
+            ("Are the coupons verified?", "Yes, all coupons are managed directly by business owners through our secure database to ensure validity."),
+            ("Can I use Pibbit without an account?", "You can explore businesses as a guest, but an account is required to rate, review, or access exclusive coupons."),
+            ("How is my data protected?", "Pibbit uses secure database protocols to ensure user activity remains private and encrypted."),
+            ("How do I export business info?", "Click the printer icon (🖨️) on any results page to generate a professional PDF report of the current business list."),
+            ("Can I sort businesses by their reputation?", "Yes! Use the 'Highest Ratings' or 'Most Reviewed' buttons at the top of the search results to reorder the list."),
+            ("How do I find businesses in a specific city?", "Click 'Select GA City' in the results toolbar to filter businesses by their specific Georgia location."),
+            ("What happens if I forget my login?", "For security, Pibbit uses email-based authentication. Please contact the administrator to reset your credentials manually in the database."),
+            ("How do I submit a review?", "Click 'Write a Review' on any business card. Your feedback helps the community make informed decisions."),
+            ("How can a local business join Pibbit?", "Business owners can apply through our vendor portal. Once verified by an admin, their shop will appear in the directory."),
+            ("Is the rating system weighted?", "Ratings are calculated as a simple average of all user submissions to provide the most transparent view of customer satisfaction.")
+        ]
         
-        self.createUi() #Creates the front Pibbit Page
+        self.homeUi() #Creates the front Pibbit Page
         self.createDynamicNav() #Creates the navigation bar at the top
 
     def createDynamicNav(self):
@@ -50,7 +66,7 @@ class StartScreen:
             self.homeLogo = ImageTk.PhotoImage(homeLogo)
             tk.Button(self.navBar, image=self.homeLogo, bg="#DAA520", bd=0, cursor="hand2", 
                       command=lambda: [self.resultsContainer.pack_forget(), self.mainPageFrame.place(relx=0.5, rely=0.5, anchor="center")]
-                     ).pack(side="left", padx=(0, 10))
+                      ).pack(side="left", padx=(0, 10))
         except:
             pass
         #Creating dynamic menubar dropdowns that sorts businesses by category name
@@ -91,10 +107,11 @@ class StartScreen:
             self.coupsNDeals.config(command=self.showAllCouponsPage)
             self.coupsNDeals.pack(side="left", padx=(0,10))
             
+            # Interactive Q&A Button
             self.qna_btn = tk.Button(self.navBar, text="Q&A",
                                      bg="#2D5A27", fg="white", font=("Georgia", 12), 
                                      width=20, relief='flat', cursor="hand2", 
-                                     command=self.showQna)
+                                     command=self.showProfessionalQA) # Pointing to new function
             self.qna_btn.pack(side="left", padx=(0,10))
             
             self.bookmarks = tk.Button(self.navBar, text="Bookmarks",
@@ -115,16 +132,22 @@ class StartScreen:
             profile_menu.add_command(label="Logout")
             self.profile_btn["menu"] = profile_menu
 
-    #Function that displays the QnA
-    def showQna(self):
+    # --- START OF NEW QNA SECTION ---
+    def showProfessionalQA(self):
+        # 1. Hide the main frame
         self.mainPageFrame.place_forget()
+        
+        # 2. Clear the container
         for widget in self.resultsContainer.winfo_children():
             widget.destroy()
             
+        # 3. Pack the container
         self.resultsContainer.pack(fill="both", expand=True)
-        colors = {'bg': "#DAA520", 'darkText': "black", 'navBg': "#2D5A27"}
-        qna_view = QnaPage(self.resultsContainer, colors)
-        qna_view.draw()
+
+        # 4. Initialize and show the external Q&A page
+        # Make sure 'from qna import QnaPage' is at the top of your main file
+        qa_page = QnaPage(self.resultsContainer, self.root)
+        qa_page.show()
 
     #Defining createButton which makes the login and Signup buttons at the top when user is not logged in
     def createButton(self, parent, text, color, command):
@@ -135,48 +158,48 @@ class StartScreen:
 
     # Function to create the interactive star rating popup
     def openRatingPopup(self, biz_id, biz_name):
-        popup = tk.Toplevel(self.root)
-        popup.title(f"Rate {biz_name}")
-        popup.geometry("450x250")
-        popup.configure(bg="#DAA520")
+        ratingPopup = tk.Toplevel(self.root)
+        ratingPopup.title(f"Rate {biz_name}")
+        ratingPopup.geometry("450x250")
+        ratingPopup.configure(bg="#DAA520")
         
-        tk.Label(popup, text=f"Rate {biz_name}", 
+        tk.Label(ratingPopup, text=f"Rate {biz_name}", 
                  font=("Georgia", 14, "bold"), bg="#DAA520").pack(pady=15)
 
-        star_frame = tk.Frame(popup, bg="#DAA520")
-        star_frame.pack()
+        ratingLocFrame = tk.Frame(ratingPopup, bg="#DAA520")
+        ratingLocFrame.pack()
 
-        self.selected_rating = 0
+        self.ratingGiven = 0
         star_buttons = []
 
-        def set_rating(score):
-            self.selected_rating = score
+        def setRating(score):
+            self.ratingGiven = score
             for i, btn in enumerate(star_buttons):
                 btn.config(fg="#FFD700" if i < score else "#C0C0C0")
 
         for i in range(1, 6):
-            btn = tk.Button(star_frame, text="★", font=("Arial", 30),
+            btn = tk.Button(ratingLocFrame, text="★", font=("Arial", 30),
                             bg="#DAA520", fg="#C0C0C0", bd=0, 
                             activebackground="#DAA520", cursor="hand2",
-                            command=lambda s=i: set_rating(s))
+                            command=lambda s=i: setRating(s))
             btn.pack(side="left")
             star_buttons.append(btn)
 
-        def submit_rating():
-            if self.selected_rating == 0:
+        def submitRating():
+            if self.ratingGiven == 0:
                 messagebox.showwarning("Selection Required", "Please select a star rating!")
                 return
             
-            success = self.db.updateBusinessRating(biz_id, self.selected_rating)
+            success = self.db.updateBusinessRating(biz_id, self.ratingGiven)
             if success:
                 #messagebox.showinfo("Success", "Business rated successfully!")
-                popup.destroy()
+                ratingPopup.destroy()
                 self.displayBusinesses(1, "Explore",0) 
             else:
                 messagebox.showerror("Error", "Could not submit rating.")
 
-        tk.Button(popup, text="Submit Rating", bg="#2D5A27", fg="white", font=("Georgia", 10, "bold"),
-                  padx=20, command=submit_rating, cursor="hand2").pack(pady=25)
+        tk.Button(ratingPopup, text="Submit Rating", bg="#2D5A27", fg="white", font=("Georgia", 10, "bold"),
+                  padx=20, command=submitRating, cursor="hand2").pack(pady=25)
 
     #Fetches categories from category table in pibbit database
     def openReviewPopup(self, biz_id, biz_name):
@@ -195,21 +218,21 @@ class StartScreen:
         ).pack(pady=15)
 
         #Write review
-        review_box = tk.Text(
+        reviewBox = tk.Text(
             popup,
             height=10,
             font=("Georgia", 11),
             wrap="word"
         )
-        review_box.pack(padx=20, pady=10, fill="both", expand=True)
+        reviewBox.pack(padx=20, pady=10, fill="both", expand=True)
 
-        def submit_review():
-            review_text = review_box.get("1.0", "end").strip()
-            if not review_text:
+        def submitReview():
+            reviewInputText = reviewBox.get("1.0", "end").strip()
+            if not reviewInputText:
                 return
 
             # TODO: save to DB
-            # self.db.saveReview(self.userEmail, biz_id, review_text)
+            # self.db.saveReview(self.userEmail, biz_id, reviewInputText)
 
             popup.destroy()
 
@@ -220,7 +243,7 @@ class StartScreen:
             fg="white",
             font=("Georgia", 12),
             relief="flat",
-            command=submit_review
+            command=submitReview
         ).pack(pady=15)
     def fetchCategories(self):
         return self.db.fetchCategories()
@@ -240,22 +263,22 @@ class StartScreen:
     def sortByRatings(self, businesses):
         """Sorts businesses by rating (highest first)"""
         if not businesses: return
-        sorted_list = sorted(
+        sortingBizes = sorted(
             businesses,
             key=lambda b: (float(b[2]) if b[2] not in (None, "", "N/A") else 0.0),
             reverse=True
         )
-        self.renderBusinessCards(sorted_list)
+        self.renderBusinessCards(sortingBizes)
 
     def sortByReviews(self, businesses):
         """Sorts businesses by review count (highest first)"""
         if not businesses: return
-        sorted_list = sorted(
+        sortingBizes = sorted(
             businesses,
             key=lambda b: (int(b[3]) if b[3] else 0),
             reverse=True
         )
-        self.renderBusinessCards(sorted_list)
+        self.renderBusinessCards(sortingBizes)
 
     # Internal function to handle bookmark click and UI update
     def onBookmarkToggle(self, biz_id, button):
@@ -274,20 +297,20 @@ class StartScreen:
             
         self.resultsContainer.pack(fill="both", expand=True)
         #Creates the canvas that holds scrolling bar
-        canvas = tk.Canvas(self.resultsContainer, bg="#DAA520", highlightthickness=0)
-        scrollbar = tk.Scrollbar(self.resultsContainer, orient="vertical", command=canvas.yview)
-        self.scrollingFrame = tk.Frame(canvas, bg="#DAA520")
-        self.scrollingFrame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-        canvas_window = canvas.create_window((0, 0), window=self.scrollingFrame, anchor="nw")
+        resultsContCanvas = tk.Canvas(self.resultsContainer, bg="#DAA520", highlightthickness=0)
+        scrollbar = tk.Scrollbar(self.resultsContainer, orient="vertical", command=resultsContCanvas.yview)
+        self.scrollingFrame = tk.Frame(resultsContCanvas, bg="#DAA520")
+        self.scrollingFrame.bind("<Configure>", lambda e: resultsContCanvas.configure(scrollregion=resultsContCanvas.bbox("all")))
+        scrollBarCanvasCreate = resultsContCanvas.create_window((0, 0), window=self.scrollingFrame, anchor="nw")
         
         #Calls the function that configures the canvas created before
         def configure_canvas(event):
-            canvas.itemconfig(canvas_window, width=event.width)
-        canvas.bind('<Configure>', configure_canvas)
+            resultsContCanvas.itemconfig(scrollBarCanvasCreate, width=event.width)
+        resultsContCanvas.bind('<Configure>', configure_canvas)
 
-        canvas.configure(yscrollcommand=scrollbar.set)
+        resultsContCanvas.configure(yscrollcommand=scrollbar.set)
         scrollbar.pack(side="right", fill="y")
-        canvas.pack(side="left", fill="both", expand=True)
+        resultsContCanvas.pack(side="left", fill="both", expand=True)
 
         # Container for sorting buttons and title
         top_bar = tk.Frame(self.scrollingFrame, bg="#DAA520")
@@ -316,8 +339,8 @@ class StartScreen:
         button_frame = tk.Frame(top_bar, bg="#DAA520")
         button_frame.pack(side="right")
         self.city_mb = tk.Menubutton(button_frame, text="Select GA City ⏷", 
-                             bg="#2D5A27", fg="white", font=("Georgia", 10), 
-                             width=15, relief="flat")
+                               bg="#2D5A27", fg="white", font=("Georgia", 10), 
+                               width=15, relief="flat")
         self.city_mb.pack(side="left", padx=5)
 
         # Create the empty Menu object
@@ -417,7 +440,7 @@ class StartScreen:
             print(f"Error: {e}")
 
     #Function that creates the homepage when program is runs
-    def createUi(self):
+    def homeUi(self):
         self.mainPageFrame = tk.Frame(self.root, bg="#DAA520")
         self.mainPageFrame.place(relx=0.5, rely=0.5, anchor="center")
         try:

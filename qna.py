@@ -1,78 +1,77 @@
-'''
-Gargi Madala, Grace Wu, Dhanvi Ramkumar
-Pibbit QNA
-FBLA- Coding and Programming
-26 January 2026
-'''
 import tkinter as tk
-from tkinter import ttk
 
 class QnaPage:
-    def __init__(self, parent, colors):
-        self.parent = parent
-        self.colors = colors
-
-        # Sample QnA Questions
+    def __init__(self, container, root):
+        self.container = container
+        self.root = root
+        
+        # Professional Q&A Repository moved here
         self.qnaData = [
-            {"question": "What is this app?", "answer": "This app helps users find and compare local businesses based on ratings and reviews."},
-            {"question": "How are businesses ranked?", "answer": "Businesses are ranked by customer ratings provided by the community."},
-            {"question": "Where do the ratings come from?", "answer": "Ratings are collected from verified customer reviews within the app."},
-            {"question": "Can I visit a business website?", "answer": "Yes! Each business card includes a direct website link button."},
-            {"question": "Why do some businesses have fewer stars?", "answer": "Star ratings are based on average customer feedback. Fewer stars indicate lower average scores."}
+            ("What is the goal of Pibbit?", "Pibbit aims to revitalize local economies by providing small businesses with a high-visibility digital platform."),
+            ("How do I save a business for later?", "Logged-in users can click the 'Bookmark' button on any business card to save it to their personal collection."),
+            ("Are the coupons verified?", "Yes, all coupons are managed directly by business owners through our secure database to ensure validity."),
+            ("Can I use Pibbit without an account?", "You can explore businesses as a guest, but an account is required to rate, review, or access exclusive coupons."),
+            ("How is my data protected?", "Pibbit uses secure database protocols to ensure user activity remains private and encrypted."),
+            ("How do I export business info?", "Click the printer icon (🖨️) on any results page to generate a professional PDF report of the current business list."),
+            ("Can I sort businesses by their reputation?", "Yes! Use the 'Highest Ratings' or 'Most Reviewed' buttons at the top of the search results to reorder the list."),
+            ("How do I find businesses in a specific city?", "Click 'Select GA City' in the results toolbar to filter businesses by their specific Georgia location."),
+            ("What happens if I forget my login?", "For security, Pibbit uses email-based authentication. Please contact the administrator to reset your credentials manually in the database."),
+            ("How do I submit a review?", "Click 'Write a Review' on any business card. Your feedback helps the community make informed decisions."),
+            ("How can a local business join Pibbit?", "Business owners can apply through our vendor portal. Once verified by an admin, their shop will appear in the directory."),
+            ("Is the rating system weighted?", "Ratings are calculated as a simple average of all user submissions to provide the most transparent view of customer satisfaction.")
         ]
-    
-    def draw(self):
-        # Header
-        tk.Label(self.parent, text="Q&A Page", 
-                 font=("Georgia", 26, "bold"), bg=self.colors['bg'], 
-                 fg=self.colors['darkText']).pack(anchor="w", padx=45, pady=(20, 10))
 
-        # Main Container
-        container = tk.Frame(self.parent, bg=self.colors['bg'])
-        container.pack(fill="both", expand=True, padx=45, pady=10)
-
-        # Scrollbar and Canvas
-        canvas = tk.Canvas(container, bg=self.colors['bg'], highlightthickness=0)
-        scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
+    def show(self):
+        """Builds and displays the Q&A UI."""
         
-        # Content frame inside Canvas
-        self.scrollable_content = tk.Frame(canvas, bg=self.colors['bg'])
-
-        self.scrollable_content.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
-
-        canvas_window = canvas.create_window((0, 0), window=self.scrollable_content, anchor="nw")
+        # 1. Create the scrollable Q&A List first
+        self.qnaCanvas = tk.Canvas(self.container, bg="#DAA520", highlightthickness=0)
+        self.qnaScrollBar = tk.Scrollbar(self.container, orient="vertical", command=self.qnaCanvas.yview)
+        self.qnaListContainer = tk.Frame(self.qnaCanvas, bg="#DAA520")
         
-        # Keep internal width consistent with canvas
-        def _on_canvas_configure(event):
-            canvas.itemconfig(canvas_window, width=event.width)
-        canvas.bind("<Configure>", _on_canvas_configure)
+        self.qnaCanvas.create_window((0, 0), window=self.qnaListContainer, anchor="nw", width=self.root.winfo_width()-100)
+        self.qnaCanvas.configure(yscrollcommand=self.qnaScrollBar.set)
 
-        canvas.configure(yscrollcommand=scrollbar.set)
+        self.qnaScrollBar.pack(side="right", fill="y")
+        self.qnaCanvas.pack(side="bottom", fill="both", expand=True, padx=50)
 
-        scrollbar.pack(side="right", fill="y")
-        canvas.pack(side="left", fill="both", expand=True)
+        # 2. Create the Search Area second
+        searchBarFrame = tk.Frame(self.container, bg="#DAA520", pady=20)
+        searchBarFrame.pack(side="top", fill="x") # Pack this at the top
 
-        # Populate cards
-        for question in self.qnaData:
-            self.qnaCards(question)
-
-    def qnaCards(self, question):
-        # Q&A cards design
-        qnaCard = tk.Frame(self.scrollable_content, bg="white", 
-                            highlightbackground=self.colors['navBg'], 
-                            highlightthickness=1, padx=20, pady=15)
-        qnaCard.pack(fill="x", pady=8, padx=5)
+        tk.Label(searchBarFrame, text="How can we help you?", font=("Georgia", 24, "bold"), bg="#DAA520").pack()
         
-        info_frame = tk.Frame(qnaCard, bg="white")
-        info_frame.pack(side="left", fill="x", expand=True)
-
-        # Question Title
-        tk.Label(info_frame, text=question['question'], font=("Arial", 15, "bold"), 
-                 bg="white", fg=self.colors['darkText']).pack(anchor="w")
+        self.searchBarVar = tk.StringVar()
         
-        # Answer Text with Wraplength to prevent horizontal overflow
-        tk.Label(info_frame, text=question['answer'], font=("Arial", 11), 
-                 bg="white", fg="#787276", wraplength=900, justify="left").pack(anchor="w", pady=(5, 0))
+        searchBarEntry = tk.Entry(searchBarFrame, textvariable=self.searchBarVar, font=("Georgia", 14), width=45, relief="flat", highlightthickness=1)
+        searchBarEntry.pack(pady=10)
+        searchBarEntry.insert(0, "Search for a question...")
+        searchBarEntry.bind("<FocusIn>", lambda e: searchBarEntry.delete(0, 'end') if "Search for a question" in self.searchBarVar.get() else None)
+
+        # 3. NOW attach the trace and run initial results
+        # Because qnaListContainer is now defined above, this won't crash!
+        self.searchBarVar.trace_add("write", self.update_qa_results)
+        self.update_qa_results()
+    def update_qa_results(self, *args):
+        if not hasattr(self, 'qnaListContainer'):
+            return
+        for widget in self.qnaListContainer.winfo_children():
+            widget.destroy()
+
+        query = self.searchBarVar.get().lower()
+        if "search for a question" in query: query = ""
+
+        found = False
+        for q, a in self.qnaData:
+            if query in q.lower() or query in a.lower():
+                found = True
+                f = tk.Frame(self.qnaListContainer, bg="#DDE0D6", bd=1, relief="solid", padx=15, pady=15)
+                f.pack(fill="x", pady=5)
+                tk.Label(f, text=f"Q: {q}", font=("Georgia", 13, "bold"), bg="#DDE0D6", fg="#2D5A27", anchor="w", justify="left").pack(fill="x")
+                tk.Label(f, text=a, font=("Georgia", 11), bg="#DDE0D6", wraplength=800, justify="left", anchor="w").pack(fill="x", pady=(5,0))
+
+        if not found:
+            tk.Label(self.qnaListContainer, text="No matches found.", font=("Georgia", 12), bg="#DAA520").pack(pady=20)
+
+        self.qnaListContainer.update_idletasks()
+        self.qnaCanvas.configure(scrollregion=self.qnaCanvas.bbox("all"))

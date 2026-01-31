@@ -9,7 +9,7 @@ import tkinter as tk
 from tkinter import messagebox
 from db import Database
 
-class RatingpopUp:
+class RatingPopup:
     def __init__(self, root, db, biz_id, biz_name, refreshCallBck):
         #Innitialization
         self.root = root
@@ -65,7 +65,7 @@ class RatingpopUp:
             messagebox.showerror("Error", "Could not submit rating.")
             
 #Handling reviews
-class ReviewpopUp:
+class ReviewPopup:
     def __init__(self, root, db, biz_id, biz_name, userEmail):
         #Innitialization
         self.root = root

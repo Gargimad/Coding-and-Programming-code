@@ -7,10 +7,11 @@ FBLA- Coding and Programming
 #Imports------------------------------------------------------------------------------------------------------------------------------------
 #Imports from libraries:
 import os
+import sys
 
 #Tkinter imports
 import tkinter as tk
-from tkinter import *
+#from tkinter import *
 from tkinter import messagebox
 
 #Pillow imports
@@ -69,7 +70,7 @@ class StartScreen:
                               command=lambda: [self.resultsContainer.pack_forget(), self.mainPageFrame.place(relx=0.5, rely=0.5, anchor="center")]
                               ).pack(side="left", padx=(0, 10)) #Home button to direct user back to home page when necessary
         except:
-            pass
+            messagebox.showwarning("Error", f"Could not load home logo")
         #Creating dynamic menubar dropdowns that sorts businesses by category name
         self.mb = tk.Menubutton( #Creating the menubutton for the Explore
             self.navBar, text="Explore ⏷", 
@@ -305,27 +306,21 @@ class StartScreen:
         # Clear existing cards first
         for widget in self.cardsFrame.winfo_children():
             widget.destroy()
-
         if not businesses:
             tk.Label(self.cardsFrame, text="No businesses found.", bg="#DAA520", font=("Georgia", 12)).pack(pady=20)
             return
-
         for biz_id, biz_name, rating, review_count, description, website_link in businesses:
             if any(field is None for field in [biz_name, description, website_link]):
                 continue
-            
             bizCard = tk.Frame(self.cardsFrame, bg="#DDE0D6", highlightbackground="#6B8E23", 
                                highlightthickness=2, padx=15, pady=10)
             bizCard.pack(fill="x", pady=10, padx=50)               
-            
             tk.Label(bizCard, text=biz_name, font=("Georgia", 18, "bold"), bg="#DDE0D6").pack(anchor="w")
-            
             #Rating display
             rateValue = float(rating) if rating else 0.0
             stars = "★" * int(rateValue) + "☆" * (5 - int(rateValue))
             tk.Label(bizCard, text=f"{stars} {rateValue} ({review_count or 0} reviews)", 
                      font=("Georgia", 12), bg="#DDE0D6", fg="#E1AD01").pack(anchor="w")
-            
             tk.Label(bizCard, text=f"{description}", font=("Georgia", 10), bg="#DDE0D6", 
                      wraplength=800, justify="left").pack(anchor='w', pady=5)
             

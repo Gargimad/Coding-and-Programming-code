@@ -61,9 +61,18 @@ class Database:
                 FOREIGN KEY(sub_id) REFERENCES subcategories(sub_id)
             );
             CREATE TABLE IF NOT EXISTS coupons (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                coupon_id INTEGER PRIMARY KEY,
                 biz_id INTEGER NOT NULL,
-                coupon_text TEXT NOT NULL,
+                title TEXT NOT NULL,
+                description TEXT,
+                coupon_code TEXT NOT NULL,
+                FOREIGN KEY(biz_id) REFERENCES businesses(biz_id)
+            );
+            CREATE TABLE IF NOT EXISTS reviews (
+                review_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                biz_id INTEGER NOT NULL, 
+                user_email TEXT NOT NULL,
+                comment TEXT,
                 FOREIGN KEY(biz_id) REFERENCES businesses(biz_id)
             );
         """)
@@ -167,22 +176,28 @@ class Database:
         return self.pibbitCursor.fetchall()
     def fetchCouponsByBusiness(self, biz_id):
         query = """
-        SELECT title, description, coupon_code, expiry_date 
+        SELECT title, description, coupon_code 
         FROM coupons 
-        WHERE biz = ? AND is_active = 1
+        WHERE biz_id = ?
         """
+        self.pibbitCursor.execute(query, (biz_id,)) # Added missing (biz_id,) parameter
         return self.pibbitCursor.fetchall()
     
     def fetchAllCoupons(self):
         query = """
-        SELECT b.name, c.title, c.description, c.coupon_code, c.expiry_date
+        SELECT b.biz_name, c.title, c.description, c.coupon_code 
         FROM coupons c
-        INNER JOIN businesses b ON c.business_id = b.id
-        WHERE c.is_active = 1
-        ORDER BY c.expiry_date ASC
+        INNER JOIN businesses b ON c.biz_id = b.biz_id
         """
         self.pibbitCursor.execute(query)
         return self.pibbitCursor.fetchall()
+
+    def saveReview(self, userEmail, biz_id, reviewInputText):
+        print(f"User Email: {userEmail}")
+        self.pibbitCursor.execute("INSERT INTO reviews (biz_id, user_email, comment) VALUES (?, ?, ?)", (biz_id, userEmail, reviewInputText))
+        self.pibbitConnection.commit()
+        return "added"
+
     def close(self):
         self.connection.close()
         self.pibbitConnection.close()

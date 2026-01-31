@@ -4,10 +4,10 @@ Pibbit Main
 FBLA- Coding and Programming
 26 January 2026
 '''
+#Imports
 import tkinter as tk
 from startScreen import StartScreen
 from db import Database
-
 def main():
     root = tk.Tk()
     StartScreen(root, userEmail="")

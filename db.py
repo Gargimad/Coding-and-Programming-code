@@ -8,25 +8,25 @@ import sqlite3
 
 class Database:
     def __init__(self):
-        # Connection for user authentication
+        #Connection to user.db database for login and signup
         self.connection = sqlite3.connect("users.db")
         self.cursor = self.connection.cursor()
         
-        # Connection for the app data
+        #Connection to the pibbit.sqlite database file
         self.pibbitConnection = sqlite3.connect("pibbit.sqlite")
         self.pibbitCursor = self.pibbitConnection.cursor()
         
         self.createTable()
         
+    #Creating all tables if not existing
     def createTable(self):
-        # 1. Create Users Table
         self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 email TEXT PRIMARY KEY,
                 password TEXT NOT NULL
             )
         """)
-        # NEW: Bookmark table in the users database to persist across logins
+        #Bookmark table
         self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS bookmarks (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -78,11 +78,13 @@ class Database:
         """)
         self.pibbitConnection.commit()
 
-    # --- NEW BOOKMARK LOGIC ---
+    #Bookmarks logic------------------------------------------------------------------------------------------------------------------
+    #Checks if business is bookmarked based on email and business ID
     def isBookmarked(self, email, biz_id):
         self.cursor.execute("SELECT 1 FROM bookmarks WHERE user_email=? AND biz_id=?", (email, biz_id))
         return self.cursor.fetchone() is not None
-
+    
+    #Keeps track of bookmarks
     def toggleBookmark(self, email, biz_id):
         if self.isBookmarked(email, biz_id):
             self.cursor.execute("DELETE FROM bookmarks WHERE user_email=? AND biz_id=?", (email, biz_id))
@@ -92,7 +94,7 @@ class Database:
             self.cursor.execute("INSERT INTO bookmarks (user_email, biz_id) VALUES (?, ?)", (email, biz_id))
             self.connection.commit()
             return "added"
-
+    #Puts the bookmarks in one place
     def fetchBookmarkedBusinesses(self, email):
         self.cursor.execute("SELECT biz_id FROM bookmarks WHERE user_email=?", (email,))
         ids = [row[0] for row in self.cursor.fetchall()]
@@ -101,7 +103,8 @@ class Database:
         query = f"SELECT biz_id, biz_name, rating, review_count, description, website_link FROM businesses WHERE biz_id IN ({placeholders})"
         self.pibbitCursor.execute(query, ids)
         return self.pibbitCursor.fetchall()
-
+    
+    #Email, login, signup Logic--------------------------------------------------------------------------------------------------------
     def addUser(self, email, password):
         try:
             self.cursor.execute("INSERT INTO users (email, password) VALUES (?, ?)", (email, password))
@@ -109,11 +112,11 @@ class Database:
             return True
         except sqlite3.IntegrityError:
             return False
-    
     def userExists(self, email, password):
         self.cursor.execute("SELECT * FROM users WHERE email=? AND password=?", (email, password))
         return self.cursor.fetchone() is not None
     
+    #Creates Businesses
     def createBusiness(self, businessName, businessDescription, sub_id): 
         try: 
             self.pibbitCursor.execute(
@@ -126,7 +129,7 @@ class Database:
             print(f"Database error: {e}")
             return False
 
-    # Updates business rating and increments review count
+    #Updates Business Rating after each user inputs rating
     def updateBusinessRating(self, biz_id, new_score):
         try:
             print(f"Business ID: {biz_id}")
@@ -152,28 +155,32 @@ class Database:
         except sqlite3.Error as e:
             print(f"Rating update error: {e}")
             return False
-        
+    #Businesses logic for the explore button
+    #Fetches categories
     def fetchCategories(self):
         self.pibbitCursor.execute("SELECT cat_id, cat_name FROM categories ORDER BY cat_id ASC")
         return self.pibbitCursor.fetchall()
-
+    #Fetches subcategories
     def fetchSubcategories(self, cat_id):
         self.pibbitCursor.execute("SELECT sub_id, sub_name FROM subcategories WHERE cat_id = ? ORDER BY sub_name ASC", (cat_id,))
         return self.pibbitCursor.fetchall()
-
+    #Fetches businesses by subcategories- used for effective sorting
     def fetchBusinessesBySubs(self, sub_id):
         self.pibbitCursor.execute("SELECT biz_id, biz_name, rating, review_count, description, website_link FROM businesses WHERE sub_id = ? ORDER by biz_name ASC", (sub_id,))
         return self.pibbitCursor.fetchall()
-
+    #Fetching all the businesses
     def fetchAllBusinesses(self):
         self.pibbitCursor.execute("SELECT biz_id, biz_name, rating, review_count, description, website_link FROM businesses ORDER by biz_name ASC")
         return self.pibbitCursor.fetchall()
+    #Fetching cities for georgia community selection
     def fetchCities(self):
         self.pibbitCursor.execute("SELECT city_id, city_name FROM cities ORDER BY city_id ASC")
         return self.pibbitCursor.fetchall()
+    #Used for filtering business by city
     def fetchBusinessByCity(self, city_id):
         self.pibbitCursor.execute("SELECT biz_id, biz_name, rating, review_count, description, website_link FROM businesses WHERE city_id = ? ORDER by biz_name ASC", (city_id,))
         return self.pibbitCursor.fetchall()
+    #Coupons by businesses
     def fetchCouponsByBusiness(self, biz_id):
         query = """
         SELECT title, description, coupon_code 
@@ -182,7 +189,7 @@ class Database:
         """
         self.pibbitCursor.execute(query, (biz_id,)) # Added missing (biz_id,) parameter
         return self.pibbitCursor.fetchall()
-    
+    #Fetching alll the coupons
     def fetchAllCoupons(self):
         query = """
         SELECT b.biz_name, c.title, c.description, c.coupon_code 
@@ -191,7 +198,7 @@ class Database:
         """
         self.pibbitCursor.execute(query)
         return self.pibbitCursor.fetchall()
-
+    #Saving Reviews
     def saveReview(self, userEmail, biz_id, reviewInputText):
         print(f"User Email: {userEmail}")
         self.pibbitCursor.execute("INSERT INTO reviews (biz_id, user_email, comment) VALUES (?, ?, ?)", (biz_id, userEmail, reviewInputText))

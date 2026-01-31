@@ -492,6 +492,7 @@ class StartScreen:
                 lbl = tk.Label(self.resultsContainer, text=f"{biz_name}: {title} - Use Code: {coupon_code}\n {description}", 
                             bg="#DDE0D6", pady=5, font=("Georgia", 12))
                 lbl.pack(fill="x", padx=50, pady=2)
+                
 #Handling Captcha and bot safety after opening login and signup page--------------------------------------------------------------------------------------------------
     def openSignUp(self):
         self.root.destroy()

@@ -215,7 +215,7 @@ class StartScreen:
         if not businesses: return
         sortingBizes = sorted(
             businesses,
-            key=lambda b: (float(b[2]) if b[2] not in (None, "", "N/A") else 0.0),
+            key=lambda b: (float(b[2]) if b[2] not in (None, "", "N/A") else 0.0), #Sorts list by using lambda
             reverse=True
         )
         self.renderBusinessCards(sortingBizes)

@@ -55,6 +55,14 @@ class Login:
         tk.Label(form, text="Email", bg=BG, fg=TEXT, font=("Georgia", 14)).pack(anchor="w")
         self.emailEntry = tk.Entry(form, width=35, relief="solid", bd=1)
         self.emailEntry.pack(pady=(0, 15))
+        #Email entry hint to help user input correct format:
+        tk.Label(
+            form, 
+            text="Use format: example@domain.com", 
+            bg=BG, 
+            fg=ACCENT, #Using accent color to help it standout
+            font=("Georgia", 9, "italic")
+        ).pack(anchor="w", pady=(0, 15))
 
         tk.Label(form, text="Password", bg=BG, fg=TEXT, font=("Georgia", 14)).pack(anchor="w")
         self.passwordEntry = tk.Entry(form, width=35, show="*", relief="solid", bd=1)

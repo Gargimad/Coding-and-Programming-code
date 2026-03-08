@@ -79,7 +79,6 @@ class SignUp:
                                      font=("Courier", 20, "bold italic"),
                                      padx=10)
         self.captcha_label.pack(pady=5)
-
         # Small Refresh Button
         tk.Button(captcha_frame, text="Refresh Code", font=("Georgia", 8), command=self.refresh_captcha, bd=0, fg=PRIMARY, bg=BG, cursor="hand2").pack()
 
@@ -138,7 +137,7 @@ class SignUp:
         # Verify String CAPTCHA
         if captcha_input != self.captcha_text:
             messagebox.showerror("Error", "CAPTCHA verification failed. Please try again.")
-            self.refresh_captcha() # Force a new code on failure
+            self.refresh_captcha() #Force a new code on failure
             return
 
         # Generate and Send OTP

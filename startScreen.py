@@ -67,7 +67,7 @@ class StartScreen:
         baseColors = {
             "gold": "#DAA520",
             "green": "#2D5A27",
-            "light_card": "#DDE0D6",
+            "lightCard": "#DDE0D6",
             "olive": "#6B8E23",
             "bookmarkGold": "#E1AD01",
         }
@@ -76,7 +76,7 @@ class StartScreen:
         self.lightColors = {
             "bg": baseColors["gold"],
             "nav": baseColors["gold"],
-            "card": baseColors["light_card"],
+            "card": baseColors["lightCard"],
             "cardText": "black",
             "accent": baseColors["green"],
             "accentText": "white",
@@ -86,7 +86,7 @@ class StartScreen:
             "buttonText": "white",
             "highlight": baseColors["olive"],
             "bookmarkAdded": baseColors["bookmarkGold"],
-            "bookmarkRemove": "#A2D98E",
+            "bookmarkRemove": "#1D2E28",
             "ratingStars": baseColors["bookmarkGold"]
         }
 
@@ -146,9 +146,9 @@ class StartScreen:
                               command=lambda: [self.updateInstructions("Welcome Home! Select a category to start."), self.resultsContainer.pack_forget(), self.mainPageFrame.place(relx=0.5, rely=0.5, anchor="center")]
                               )
             homeButton.pack(side="left", padx=(0, 10)) #Home button to direct user back to home page when necessary
-            # Add hover instruction for home
+            #Adding hover instruction for home
             homeButton.bind("<Enter>", lambda e: self.updateInstructions("Click to return to the main dashboard."))
-            self.home_button = homeButton  # Store reference for theme updates
+            self.home_button = homeButton  #Storing reference for theme updates
         except:
             messagebox.showwarning("Error", f"Could not load home logo")
         #Creating dynamic menubar dropdowns that sorts businesses by category name
@@ -186,8 +186,8 @@ class StartScreen:
         #Displaying sign up and login button when user has not signed in
         if not self.userEmail:
             #Guest exit Page Buttons
-            self.guestExPgButtons(self.navBar, "Sign Up", colors["button"], self.openSignUp)
-            self.guestExPgButtons(self.navBar, "Login", colors["button"], self.openLogin)
+            self.guestExPgButtons(self.navBar, "Sign Up", colors["button"], command = self.openSignUp)
+            self.guestExPgButtons(self.navBar, "Login", colors["button"], command = self.openLogin)
         
         else:
             #Creating buttons in the top navigation bar that are available only when user signs in
@@ -198,6 +198,14 @@ class StartScreen:
             self.coupsNDeals.config(command=self.showAllCouponsPage) #Shows all coupons
             self.coupsNDeals.pack(side="left", padx=(0,10))
             self.coupsNDeals.bind("<Enter>", lambda e: self.updateInstructions("View exclusive local discounts and promo codes."))
+                        
+            #Handling bookmarks with the buttons
+            self.bookmarks = tk.Button(self.navBar, text="Bookmarks",
+                                      bg=colors["button"], fg=colors["buttonText"], font=("Georgia", 12), 
+                                      width=20, relief='flat', cursor="hand2",
+                                      command=lambda: self.displayBusinesses(-1, "Bookmarks",0))
+            self.bookmarks.pack(side="left", padx=(0,10))
+            self.bookmarks.bind("<Enter>", lambda e: self.updateInstructions("View businesses you have saved to your favorites."))
             
             #Interactive Q&A Button
             self.helpBtn = tk.Button(self.navBar, text="Help",
@@ -206,14 +214,7 @@ class StartScreen:
                                      command=self.showQA) # Pointing to new function
             self.helpBtn.pack(side="left", padx=(0,10))
             self.helpBtn.bind("<Enter>", lambda e: self.updateInstructions("Have a question? Visit our interactive Q&A support."))
-            
-            #Handling bookmarks with the buttons
-            self.bookmarks = tk.Button(self.navBar, text="Bookmarks",
-                                      bg=colors["button"], fg=colors["buttonText"], font=("Georgia", 12), 
-                                      width=20, relief='flat', cursor="hand2",
-                                      command=lambda: self.displayBusinesses(-1, "Bookmarks",0))
-            self.bookmarks.pack(side="left", padx=(0,10))
-            self.bookmarks.bind("<Enter>", lambda e: self.updateInstructions("View businesses you have saved to your favorites."))
+
             
             # Dark mode toggle button
             self.darkBtn = tk.Button(
@@ -306,7 +307,7 @@ class StartScreen:
         if not businesses: return
         sortingBizes = sorted(
             businesses,
-            key=lambda b: (float(b[2]) if b[2] not in (None, "", "N/A") else 0.0), #Sorts list by using lambda
+            key=lambda b: (float(b[2]) if b[2] not in (None, "", "N/A") else 0.0), #Sorts list by using lambda- rating is 2nd index
             reverse=True
         )
         self.renderBusinessCards(sortingBizes)
@@ -317,8 +318,8 @@ class StartScreen:
         if not businesses: return
         sortingBizes = sorted(
             businesses,
-            key=lambda b: (int(b[3]) if b[3] else 0),
-            reverse=True
+            key=lambda b: (int(b[3]) if b[3] else 0), #Using b(3) as review is 3rd index of the list in the query of the db
+            reverse=True #Using reverse to counter the default lowest to highest order- reverse helps to make it highest to lowest
         )
         self.renderBusinessCards(sortingBizes)
 
@@ -484,7 +485,7 @@ class StartScreen:
             actBtnCont = tk.Frame(bizCard, bg=colors["card"])
             actBtnCont.pack(fill="x", side="bottom")
 
-            tk.Button(actBtnCont, text="Website Link", bg=colors["button"], fg=colors["buttonText"], 
+            tk.Button(actBtnCont, text="Website Link", bg="#D16459", fg=colors["buttonText"], 
                      relief="flat", padx=10, cursor="hand2",
                       command=lambda link=website_link: self.openWebsite(link)).pack(side="right", padx=5)
 
@@ -558,6 +559,8 @@ class StartScreen:
         self.updateInstructions("Preparing PDF report... Please wait.")
         #Generates presentatble report and prevents the report from printing businesses that aren't complete yet
         #Filtering input data by using list comprehension. if business is null then it removes it
+        #We learned about Reportlab and how to effectively use it with-->
+        #https://www.blog.pythonlibrary.org/2021/09/15/getting-started-with-reportlabs-canvas/
         filterInData = [b for b in businesses if b[1] and b[1] != "None"]
         
         if not filterInData:

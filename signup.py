@@ -6,9 +6,9 @@ import re
 import smtplib
 import ssl
 import secrets
-import string  # Required for generating random character strings
+import string  #Required for generating random character strings
 
-# Color Schemes
+#Color Schemes
 BG = "#ffffff" 
 PRIMARY = "#e29578" 
 ACCENT = "#C48B42" 
@@ -21,23 +21,22 @@ class SignUp:
         self.root.state("zoomed")
         self.root.configure(bg=BG)
         self.db = Database()
-        
-        # Initialize the new string-based CAPTCHA
-        self.captcha_text = ""
-        self.generate_new_captcha()
+        #We used a string based captcha
+        self.captchaCont = "" #Captcha content
+        self.genNewCaptcha() #Generating new Captcha
 
         self.signupUi()
 
-    def generate_new_captcha(self):
-        """Generates a random 6-character alphanumeric string."""
-        chars = string.ascii_uppercase + string.digits
-        self.captcha_text = ''.join(random.choice(chars) for _ in range(6))
+    def genNewCaptcha(self):
+        #This randomly generates a 6-letter+number string
+        captchaChar = string.ascii_uppercase + string.digits #Uppercase letters and numbers
+        self.captchaCont = ''.join(random.choice(captchaChar) for _ in range(6)) #Using random library to create random captcha
 
     def refresh_captcha(self):
-        """Refreshes the CAPTCHA text and updates the UI label."""
-        self.generate_new_captcha()
-        # Add spaces for visual clarity and to hinder basic OCR
-        display_text = " ".join(self.captcha_text)
+        #'Refresh code' to refresh the captcha 6-letter characters
+        self.genNewCaptcha()
+        #Adding spaces
+        display_text = " ".join(self.captchaCont)
         self.captcha_label.config(text=display_text)
 
     def signupUi(self):
@@ -66,14 +65,14 @@ class SignUp:
         self.confirmPasswordEntry.pack(pady=(0, 20))
 
         # --- Enhanced CAPTCHA Section ---
-        captcha_frame = tk.Frame(frame, bg=BG)
+        captcha_frame = tk.Frame(frame, bg=BG) #Holds the 
         captcha_frame.pack(pady=10)
 
         tk.Label(captcha_frame, text="Enter the characters below:", bg=BG, fg=TEXT, font=("Georgia", 10)).pack()
         
         # Displaying CAPTCHA with wide spacing and distinct background
         self.captcha_label = tk.Label(captcha_frame, 
-                                     text=" ".join(self.captcha_text), 
+                                     text=" ".join(self.captchaCont), 
                                      bg="#f0f0f0", 
                                      fg=ACCENT, 
                                      font=("Courier", 20, "bold italic"),
@@ -103,7 +102,7 @@ class SignUp:
                 )        
         context = ssl.create_default_context()
         
-        try:
+        try: #SMTP Library - Simple Mail Transfer Protocol to easily send emails to people
             with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
                 server.login(sender_email, password)
                 server.sendmail(sender_email, receiver_email, message)
@@ -135,7 +134,7 @@ class SignUp:
             return
             
         # Verify String CAPTCHA
-        if captcha_input != self.captcha_text:
+        if captcha_input != self.captchaCont:
             messagebox.showerror("Error", "CAPTCHA verification failed. Please try again.")
             self.refresh_captcha() #Force a new code on failure
             return

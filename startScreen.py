@@ -216,7 +216,7 @@ class StartScreen:
             self.helpBtn.bind("<Enter>", lambda e: self.updateInstructions("Have a question? Visit our interactive Q&A support."))
 
             
-            # Dark mode toggle button
+            #Dark mode toggle button
             self.darkBtn = tk.Button(
                 self.navBar,
                 text="🌙 Dark Mode",
@@ -269,13 +269,13 @@ class StartScreen:
                         bg=color, fg=colors["buttonText"], width=15, pady=8,
                         bd=0, command=command, cursor="hand2")
         btn.pack(side="right", padx=10)
-        # Store reference for theme updates
-        if text == "Sign Up":
+        #Storing reference for theme updates
+        if (text == "Sign Up"):
             self.signup_btn = btn
         else:
             self.login_btn = btn
-        # Update instructions on hover for guest buttons
-        if text == "Sign Up":
+        #Updating instructions on hover for guest buttons
+        if (text == "Sign Up"):
             btn.bind("<Enter>", lambda e: self.updateInstructions("Join PIBBIT to bookmark businesses and get coupons!"))
         else:
             btn.bind("<Enter>", lambda e: self.updateInstructions("Log in to access your saved businesses and deals."))
@@ -337,7 +337,7 @@ class StartScreen:
 
     #Displays businesses on the resultsContainer frame with scrollbar frame
     def displayBusinesses(self, sub_id, sub_name, city_id):
-        # Store current view parameters for theme refresh
+        #Storing current view parameters for theme refresh
         self.current_sub_id = sub_id
         self.current_sub_name = sub_name
         self.current_city_id = city_id
@@ -542,7 +542,7 @@ class StartScreen:
                     bg=colors["bg"], fg=colors["text"], 
                     font=("Georgia", 20)).grid(row=0, column=0)
         
-        # Pibbit title and slogan
+        #Pibbit title and slogan
         tk.Label(self.mainPageFrame, text="PIBBIT", 
                 font=("Georgia", 100, "bold"),
                 fg=colors["text"], bg=colors["bg"]).grid(row=0, column=1, sticky="w")
@@ -656,9 +656,9 @@ class StartScreen:
                         bg=f.cget('bg'), fg=colors["cardText"], wraplength=400).pack(anchor="w")
                 
                 # The actual code
-                code_lbl = tk.Label(f, text=f"CODE: {coupon_code}", font=("Courier", 12, "bold"), 
+                codeLbl = tk.Label(f, text=f"CODE: {coupon_code}", font=("Courier", 12, "bold"), 
                                     bg="#F0F0F0", fg="#6E2F20", padx=5)
-                code_lbl.pack(side="left", pady=5)
+                codeLbl.pack(side="left", pady=5)
                 
     def showAllCouponsPage(self):
         colors = self.getColors()
@@ -698,27 +698,27 @@ class StartScreen:
 
         all_coupons = self.db.fetchAllCoupons()
 
-        # 4. Render Cards using the same logic as displayBusinesses
+        #Rendering Cards using the same logic as displayBusinesses
         for biz_name, title, desc, code in all_coupons:
-            # Consistent Card Frame
+            #Consistent Card Frame
             card = tk.Frame(self.scrollingFrame, bg=colors["card"], 
                             highlightbackground=colors["highlight"], highlightthickness=2,
                             padx=15, pady=10)
             
-            # Using the same padding as the Business Cards
+            #Using the same padding as the Business Cards
             card.pack(fill="x", pady=10, padx=50)
 
-            # Business Name
+            #Business Name
             tk.Label(card, text=biz_name, font=("Georgia", 18, "bold"), 
                     bg=colors["card"], fg=colors["cardText"]).pack(anchor="w")
             
-            # Coupon Details
+            #Coupon Details
             tk.Label(card, text=title, font=("Georgia", 14, "italic"), 
                     bg=colors["card"], fg=colors["accent"]).pack(anchor="w")
             tk.Label(card, text=desc, font=("Georgia", 11), 
                     bg=colors["card"], fg=colors["cardText"], wraplength=800, justify="left").pack(anchor="w", pady=5)
             
-            # Standardized Footer Area
+            #Standardized Footer Area
             footer = tk.Frame(card, bg=colors["card"])
             footer.pack(fill="x", pady=(10, 0))
             
@@ -752,7 +752,7 @@ class StartScreen:
         #Root background
         self.root.configure(bg=colors["bg"])
 
-        # Navbar and its children
+        #Navbar and its children
         self.navBar.configure(bg=colors["nav"])
         
         #Update navigation buttons if they exist
@@ -792,34 +792,32 @@ class StartScreen:
         if hasattr(self, 'home_button'):
             self.home_button.configure(bg=colors["nav"])
 
-        # Results container
+        #Results container
         self.resultsContainer.configure(bg=colors["bg"])
 
-        # Footer
+        #Footer
         self.footer.configure(bg=colors["footer"], fg="white")
 
-        # CRITICAL FIX: Always recreate the home page when theme changes
-        # This ensures it has the correct colors when we return to it
+        
         self.homeUi()
         
-        # If main page is currently hidden, make sure it stays hidden
         if not self.mainPageFrame.winfo_ismapped():
             self.mainPageFrame.place_forget()
 
-        # Update cards if they exist
+        #Updates cards if they exist
         if hasattr(self, "cardsFrame"):
             self.cardsFrame.configure(bg=colors["bg"])
             for card in self.cardsFrame.winfo_children():
                 try:
                     card.configure(bg=colors["card"])
-                    # Update labels inside cards
+                    #Updates labels inside cards
                     for child in card.winfo_children():
-                        if isinstance(child, tk.Label):
-                            if "★" in child.cget('text') or "☆" in child.cget('text'):
+                        if (isinstance(child, tk.Label)):
+                            if ("★" in child.cget('text') or "☆" in child.cget('text')):
                                 child.configure(bg=colors["card"], fg=colors["ratingStars"])
                             else:
                                 child.configure(bg=colors["card"], fg=colors["cardText"])
-                        elif isinstance(child, tk.Frame):  # For action button container
+                        if (isinstance(child, tk.Frame)):  # For action button container
                             child.configure(bg=colors["card"])
                             for btn in child.winfo_children():
                                 if isinstance(btn, tk.Button):

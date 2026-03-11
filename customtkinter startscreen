@@ -1,0 +1,1195 @@
+'''
+Gargi Madala, Grace Wu, Dhanvi Ramkumar
+Pibbit Start Screen
+FBLA- Coding and Programming
+26 January 2026
+'''
+# Imports------------------------------------------------------------------------------------------------------------------------------------
+import os
+import sys
+
+# CustomTkinter imports (replacing tkinter)
+import customtkinter as ctk
+from tkinter import messagebox  # Keep this for dialogs
+
+# Pillow imports
+from PIL import Image, ImageTk
+
+# Webbrowser import for opening external links
+import webbrowser
+
+# Library imports for generating reports
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.units import inch
+from reportlab.pdfgen import canvas
+import tempfile
+
+# Imports from other pages (Modular code): 
+from popUpControl import RatingPopup, ReviewPopup
+from db import Database
+from qna import QnaPage
+
+# Try/Except to help features fit into computers with different sizes
+try: 
+    from ctypes import windll
+    windll.shcore.SetProcessDpiAwareness(1)
+except:
+    pass
+
+# Configure CustomTkinter appearance
+ctk.set_appearance_mode("light")  # Can be "light", "dark", or "system"
+ctk.set_default_color_theme("blue")  # Themes: "blue", "green", "dark-blue"
+
+# Class of StartScreen (In Pascal Case)-----------------------------------------------------------------------------------------------------------------------
+class StartScreen:
+    # Initializing the class
+    def __init__(self, root, userEmail):
+        # Connecting to database page and controlling tkinter application framework
+        self.root = root
+        self.db = Database()
+        self.root.title("PIBBIT")
+        self.root.state("zoomed")
+        
+        # Configure grid layout for root
+        self.root.grid_columnconfigure(0, weight=1)
+        self.root.grid_rowconfigure(1, weight=1)
+        
+        self.userEmail = userEmail  # User email that user inputs in sign up/login
+        
+        # Create navigation bar with CustomTkinter
+        self.navBar = ctk.CTkFrame(self.root, fg_color="transparent", height=80)
+        self.navBar.grid(row=0, column=0, sticky="ew", padx=20, pady=20)
+        self.navBar.grid_columnconfigure(0, weight=1)
+        
+        # Results container (will hold business cards)
+        self.resultsContainer = ctk.CTkFrame(self.root, fg_color="transparent")
+        self.resultsContainer.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 20))
+        self.resultsContainer.grid_columnconfigure(0, weight=1)
+        self.resultsContainer.grid_rowconfigure(0, weight=1)
+        
+        self.darkMode = False
+        self.current_view = None  # Track current view for theme refresh
+        self.current_sub_id = None
+        self.current_sub_name = None
+        self.current_city_id = None
+
+        # Theme Colors-----------------------------------------------------------------------------------------
+        # Shared colors between the two
+        baseColors = {
+            "gold": "#DAA520",
+            "green": "#2D5A27",
+            "lightCard": "#DDE0D6",
+            "olive": "#6B8E23",
+            "bookmarkGold": "#E1AD01",
+        }
+
+        # Light Theme
+        self.lightColors = {
+            "bg": baseColors["gold"],
+            "nav": baseColors["gold"],
+            "card": baseColors["lightCard"],
+            "cardText": "black",
+            "accent": baseColors["green"],
+            "accentText": "white",
+            "text": "black",
+            "footer": baseColors["green"],
+            "button": baseColors["green"],
+            "buttonText": "white",
+            "highlight": baseColors["olive"],
+            "bookmarkAdded": baseColors["bookmarkGold"],
+            "bookmarkRemove": "#1D2E28",
+            "ratingStars": baseColors["bookmarkGold"]
+        }
+
+        # Dark Theme
+        self.darkColors = {
+            "bg": "#1E1E1E",
+            "nav": "#2B2B2B",
+            "card": "#333333",
+            "cardText": "white",
+            "accent": "#3D7A35",
+            "accentText": "white",
+            "text": "white",
+            "footer": "#111111",
+            "button": "#3D7A35",
+            "buttonText": "white",
+            "highlight": "#4A7023",
+            "bookmarkAdded": "#B8860B",
+            "bookmarkRemove": baseColors["green"],
+            "ratingStars": "#FFD700"
+        }
+
+        # Instructions------------------------------------------------------------------------------------------------------------------------------------------
+        # This StringVar allows us to update the text at the bottom of the screen dynamically
+        self.instructionVar = ctk.StringVar(value="Welcome to PIBBIT! Use 'Explore' to find local businesses.")
+        self.footer = ctk.CTkLabel(
+            self.root,
+            textvariable=self.instructionVar,
+            font=("Georgia", 11, "italic"),
+            fg_color=self.lightColors["footer"],
+            text_color="white",
+            height=40,
+            corner_radius=0
+        )
+        self.footer.grid(row=2, column=0, sticky="ew")
+
+        self.homeUi()  # Creates the front Pibbit Page
+        self.createDynamicNav()  # Creates the navigation bar at the top
+
+    # Function to update the footer text easily
+    def updateInstructions(self, text):
+        self.instructionVar.set(text)
+
+    # Helper method to get current theme colors
+    def getColors(self):
+        return self.darkColors if self.darkMode else self.lightColors
+
+    # Dynamic navigation bar using sqlite database values for easy navigation--------------------------------------------------------------------------------------
+    def createDynamicNav(self):
+        colors = self.getColors()
+        
+        # Create a frame for left navigation items
+        left_nav = ctk.CTkFrame(self.navBar, fg_color="transparent")
+        left_nav.pack(side="left")
+        
+        # Create a frame for right navigation items
+        right_nav = ctk.CTkFrame(self.navBar, fg_color="transparent")
+        right_nav.pack(side="right")
+
+        # Creating the home logo next to the explore page for easy navigation
+        try:
+            homeLogo = Image.open(os.path.join(os.path.dirname(__file__), "homeLogo.png")).resize((50, 50))
+            self.homeLogo = ctk.CTkImage(light_image=homeLogo, dark_image=homeLogo, size=(50, 50))
+            homeButton = ctk.CTkButton(
+                left_nav,
+                image=self.homeLogo,
+                text="",
+                width=50,
+                height=50,
+                fg_color="transparent",
+                hover_color=colors["highlight"],
+                cursor="hand2",
+                command=lambda: [self.updateInstructions("Welcome Home! Select a category to start."), 
+                                self.resultsContainer.grid_forget(),
+                                self.resultsContainer.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 20)),
+                                self.mainPageFrame.place(relx=0.5, rely=0.5, anchor="center")]
+            )
+            homeButton.pack(side="left", padx=(0, 10))
+            # Adding hover instruction for home
+            homeButton.bind("<Enter>", lambda e: self.updateInstructions("Click to return to the main dashboard."))
+            self.home_button = homeButton  # Storing reference for theme updates
+        except:
+            messagebox.showwarning("Error", "Could not load home logo")
+
+        # Creating dynamic menubutton for Explore
+        self.mb = ctk.CTkOptionMenu(
+            left_nav,
+            values=["Explore"],
+            command=lambda choice: self.displayBusinesses(1, 'Explore', 0),
+            fg_color=colors["button"],
+            button_color=colors["button"],
+            button_hover_color=colors["highlight"],
+            text_color=colors["buttonText"],
+            font=("Georgia", 12),
+            width=200,
+            dynamic_resizing=False
+        )
+        self.mb.pack(side="left", padx=(0, 10))
+        self.mb.set("Explore ⏷")
+        # Add hover instruction for Explore
+        self.mb.bind("<Enter>", lambda e: self.updateInstructions("Browse businesses by category or location."))
+
+        # Create dropdown menu for categories
+        self.category_menu = ctk.CTkOptionMenu(
+            left_nav,
+            values=["Select Category"],
+            command=self.handle_category_selection,
+            fg_color=colors["button"],
+            button_color=colors["button"],
+            button_hover_color=colors["highlight"],
+            text_color=colors["buttonText"],
+            font=("Georgia", 12),
+            width=200
+        )
+        self.category_menu.pack(side="left", padx=(0, 10))
+        self.category_menu.set("Categories ▼")
+        
+        # Populate categories
+        categories = self.fetchCategories()
+        category_names = [cat[1] for cat in categories]
+        self.category_menu.configure(values=category_names)
+        self.categories_dict = {cat[1]: cat[0] for cat in categories}
+
+        # Display sign up and login button when user has not signed in
+        if not self.userEmail:
+            # Guest exit Page Buttons
+            self.signup_btn = ctk.CTkButton(
+                right_nav,
+                text="Sign Up",
+                fg_color=colors["button"],
+                hover_color=colors["highlight"],
+                text_color=colors["buttonText"],
+                font=("Georgia", 12, "bold"),
+                width=150,
+                height=40,
+                command=self.openSignUp,
+                cursor="hand2"
+            )
+            self.signup_btn.pack(side="right", padx=10)
+            self.signup_btn.bind("<Enter>", lambda e: self.updateInstructions("Join PIBBIT to bookmark businesses and get coupons!"))
+
+            self.login_btn = ctk.CTkButton(
+                right_nav,
+                text="Login",
+                fg_color=colors["button"],
+                hover_color=colors["highlight"],
+                text_color=colors["buttonText"],
+                font=("Georgia", 12, "bold"),
+                width=150,
+                height=40,
+                command=self.openLogin,
+                cursor="hand2"
+            )
+            self.login_btn.pack(side="right", padx=10)
+            self.login_btn.bind("<Enter>", lambda e: self.updateInstructions("Log in to access your saved businesses and deals."))
+
+        else:
+            # Creating buttons in the top navigation bar that are available only when user signs in
+            # Coupons and deals
+            self.coupsNDeals = ctk.CTkButton(
+                left_nav,
+                text="Coupons and Deals",
+                fg_color=colors["button"],
+                hover_color=colors["highlight"],
+                text_color=colors["buttonText"],
+                font=("Georgia", 12),
+                width=200,
+                height=40,
+                command=self.showAllCouponsPage,
+                cursor="hand2"
+            )
+            self.coupsNDeals.pack(side="left", padx=(0, 10))
+            self.coupsNDeals.bind("<Enter>", lambda e: self.updateInstructions("View exclusive local discounts and promo codes."))
+
+            # Handling bookmarks with the buttons
+            self.bookmarks = ctk.CTkButton(
+                left_nav,
+                text="Bookmarks",
+                fg_color=colors["button"],
+                hover_color=colors["highlight"],
+                text_color=colors["buttonText"],
+                font=("Georgia", 12),
+                width=200,
+                height=40,
+                command=lambda: self.displayBusinesses(-1, "Bookmarks", 0),
+                cursor="hand2"
+            )
+            self.bookmarks.pack(side="left", padx=(0, 10))
+            self.bookmarks.bind("<Enter>", lambda e: self.updateInstructions("View businesses you have saved to your favorites."))
+
+            # Interactive Q&A Button
+            self.helpBtn = ctk.CTkButton(
+                left_nav,
+                text="Help",
+                fg_color=colors["button"],
+                hover_color=colors["highlight"],
+                text_color=colors["buttonText"],
+                font=("Georgia", 12),
+                width=200,
+                height=40,
+                command=self.showQA,
+                cursor="hand2"
+            )
+            self.helpBtn.pack(side="left", padx=(0, 10))
+            self.helpBtn.bind("<Enter>", lambda e: self.updateInstructions("Have a question? Visit our interactive Q&A support."))
+
+            # Dark mode toggle button
+            self.darkBtn = ctk.CTkButton(
+                right_nav,
+                text="🌙 Dark Mode",
+                fg_color=colors["button"],
+                hover_color=colors["highlight"],
+                text_color=colors["buttonText"],
+                font=("Georgia", 12),
+                width=150,
+                height=40,
+                command=self.toggleDarkMode,
+                cursor="hand2"
+            )
+            self.darkBtn.pack(side="right", padx=10)
+
+            # Profile settings for logged in user
+            self.profileBtn = ctk.CTkOptionMenu(
+                right_nav,
+                values=["Edit Profile", "Settings", "Logout"],
+                command=self.handle_profile_selection,
+                fg_color=colors["nav"],
+                button_color=colors["button"],
+                button_hover_color=colors["highlight"],
+                text_color=colors["text"],
+                font=("Arial", 11),
+                width=200
+            )
+            self.profileBtn.pack(side="right", padx=10)
+            self.profileBtn.set("👤 Profile ✎")
+            self.profileBtn.bind("<Enter>", lambda e: self.updateInstructions("Manage your account settings and profile details."))
+
+    def handle_category_selection(self, choice):
+        """Handle category selection from dropdown"""
+        if choice in self.categories_dict:
+            cat_id = self.categories_dict[choice]
+            # You might want to show subcategories here
+            self.displayBusinesses(cat_id, choice, 0)
+
+    def handle_profile_selection(self, choice):
+        """Handle profile menu selections"""
+        if choice == "Logout":
+            self.userEmail = None
+            # Refresh the navigation bar
+            for widget in self.navBar.winfo_children():
+                widget.destroy()
+            self.createDynamicNav()
+            self.homeUi()
+        elif choice == "Edit Profile":
+            self.updateInstructions("Edit Profile - Feature coming soon!")
+        elif choice == "Settings":
+            self.updateInstructions("Settings - Feature coming soon!")
+
+    # Intelligent Q&A -------------------------------------------------------------------------------------------------------------------------------------
+    def showQA(self):
+        colors = self.getColors()
+        self.updateInstructions("Interactive Support: Browse common questions or search for help.")
+        # Hides the main frame
+        self.mainPageFrame.place_forget()
+        # Clears the result container to display this page
+        for widget in self.resultsContainer.winfo_children():
+            widget.destroy()
+        
+        # Create scrollable frame for Q&A
+        self.scrollable_frame = ctk.CTkScrollableFrame(
+            self.resultsContainer,
+            fg_color=colors["bg"],
+            corner_radius=0
+        )
+        self.scrollable_frame.pack(fill="both", expand=True)
+        
+        # Showing the qna page
+        qnaPageShow = QnaPage(self.scrollable_frame, self.root)
+        qnaPageShow.show()
+
+    # Rating and Reviews------------------------------------------------------------------------------------------------------------------------------
+    def openRatingPopup(self, biz_id, biz_name):
+        RatingPopup(self.root, self.db, biz_id, biz_name, self.displayBusinesses)
+
+    def openReviewPopup(self, root, db, biz_id, biz_name):
+        ReviewPopup(self.root, self.db, biz_id, biz_name, self.userEmail)
+
+    def fetchCategories(self):
+        return self.db.fetchCategories()
+
+    # Fetches subcategories based on category id from subcategory table in pibbit database
+    def fetchSubcategories(self, cat_id):
+        return self.db.fetchSubcategories(cat_id)
+
+    # Fetches businesses based on sub id from businesses table in pibbit database     
+    def fetchBusinessesBySubs(self, sub_id):
+        return self.db.fetchBusinessesBySubs(sub_id)
+
+    # Fetches ALL businesses from businesses table from pibbit database when explore button is clicked
+    def fetchAllBusinesses(self):
+        return self.db.fetchAllBusinesses()
+
+    # Sorting ratings and reviews---------------------------------------------------------------------------------------------------------------------
+    def sortByRatings(self, businesses):
+        self.updateInstructions("Sorting by user ratings: Showing top-rated businesses first.")
+        # Sorting ratings by order- highest rating first and lowest rating last
+        if not businesses:
+            return
+        sortingBizes = sorted(
+            businesses,
+            key=lambda b: (float(b[2]) if b[2] not in (None, "", "N/A") else 0.0),  # Sorts list by using lambda- rating is 2nd index
+            reverse=True
+        )
+        self.renderBusinessCards(sortingBizes)
+
+    def sortByReviews(self, businesses):
+        self.updateInstructions("Sorting by review count: Showing the most discussed businesses.")
+        # Sorts businesses by review count- highest first to lowest last
+        if not businesses:
+            return
+        sortingBizes = sorted(
+            businesses,
+            key=lambda b: (int(b[3]) if b[3] else 0),  # Using b(3) as review is 3rd index of the list in the query of the db
+            reverse=True  # Using reverse to counter the default lowest to highest order- reverse helps to make it highest to lowest
+        )
+        self.renderBusinessCards(sortingBizes)
+
+    # Bookmarks-----------------------------------------------------------------------------------------------------------------------------------------
+    def onBookmarkToggle(self, biz_id, button):
+        colors = self.getColors()
+        res = self.db.toggleBookmark(self.userEmail, biz_id)
+        if res == "added":
+            button.configure(text="🔖 Bookmarked", fg_color=colors["bookmarkAdded"])
+            self.updateInstructions("Business saved to your bookmarks!")
+        else:
+            button.configure(text="☆ Bookmark", fg_color=colors["bookmarkRemove"])
+            self.updateInstructions("Business removed from bookmarks.")
+
+    # Displays businesses on the resultsContainer frame with scrollbar frame
+    def displayBusinesses(self, sub_id, sub_name, city_id):
+        # Storing current view parameters for theme refresh
+        self.current_sub_id = sub_id
+        self.current_sub_name = sub_name
+        self.current_city_id = city_id
+        self.current_view = 'businesses'
+
+        colors = self.getColors()
+        self.updateInstructions(f"Viewing {sub_name if sub_name != 0 else 'Selected City'}. Click 'Website Link' to visit them.")
+        self.mainPageFrame.place_forget()
+        
+        # Destroys container before displaying new information
+        for widget in self.resultsContainer.winfo_children():
+            widget.destroy()
+
+        # Create scrollable frame for businesses
+        self.scrollable_frame = ctk.CTkScrollableFrame(
+            self.resultsContainer,
+            fg_color=colors["bg"],
+            corner_radius=0
+        )
+        self.scrollable_frame.pack(fill="both", expand=True)
+
+        # Container for sorting buttons and title
+        top_bar = ctk.CTkFrame(self.scrollable_frame, fg_color="transparent")
+        top_bar.pack(fill="x", pady=10, padx=50)
+
+        # If explore is clicked, it displays all the businesses
+        if sub_id == 1:
+            title_label = ctk.CTkLabel(
+                top_bar,
+                text="All Businesses:",
+                font=("Georgia", 20, "bold"),
+                text_color=colors["text"],
+                fg_color="transparent"
+            )
+            title_label.pack(side="left")
+            businesses = self.fetchAllBusinesses()
+        elif sub_id == -1:
+            # Displays businesses that the user has saved
+            title_label = ctk.CTkLabel(
+                top_bar,
+                text="Your Bookmarked Businesses:",
+                font=("Georgia", 20, "bold"),
+                text_color=colors["text"],
+                fg_color="transparent"
+            )
+            title_label.pack(side="left")
+            businesses = self.db.fetchBookmarkedBusinesses(self.userEmail)
+        elif sub_id == 0 and city_id != 0:
+            title_label = ctk.CTkLabel(
+                top_bar,
+                text="Businesses in Selected City:",
+                font=("Georgia", 20, "bold"),
+                text_color=colors["text"],
+                fg_color="transparent"
+            )
+            title_label.pack(side="left")
+            businesses = self.db.fetchBusinessByCity(city_id)
+        else:
+            title_label = ctk.CTkLabel(
+                top_bar,
+                text=f"Results for {sub_name}:",
+                font=("Georgia", 20, "bold"),
+                text_color=colors["text"],
+                fg_color="transparent"
+            )
+            title_label.pack(side="left")
+            businesses = self.fetchBusinessesBySubs(sub_id)
+
+        # Sorting Buttons Frame
+        sortingBtnFrame = ctk.CTkFrame(top_bar, fg_color="transparent")
+        sortingBtnFrame.pack(side="right")
+
+        # City selection dropdown
+        self.city_mb = ctk.CTkOptionMenu(
+            sortingBtnFrame,
+            values=["Select GA City"],
+            command=self.handle_city_selection,
+            fg_color=colors["button"],
+            button_color=colors["button"],
+            button_hover_color=colors["highlight"],
+            text_color=colors["buttonText"],
+            font=("Georgia", 10),
+            width=150
+        )
+        self.city_mb.pack(side="left", padx=5)
+        self.city_mb.set("Select GA City ⏷")
+        self.city_mb.bind("<Enter>", lambda e: self.updateInstructions("Filter results by specific Georgia communities."))
+
+        # Rating sort button
+        rating_btn = ctk.CTkButton(
+            sortingBtnFrame,
+            text="Highest Ratings",
+            fg_color=colors["button"],
+            hover_color=colors["highlight"],
+            text_color=colors["buttonText"],
+            font=("Georgia", 10),
+            width=150,
+            height=32,
+            command=lambda: self.sortByRatings(businesses),
+            cursor="hand2"
+        )
+        rating_btn.pack(side="left", padx=5)
+
+        # Review sort button
+        review_btn = ctk.CTkButton(
+            sortingBtnFrame,
+            text="Most Reviewed",
+            fg_color=colors["button"],
+            hover_color=colors["highlight"],
+            text_color=colors["buttonText"],
+            font=("Georgia", 10),
+            width=150,
+            height=32,
+            command=lambda: self.sortByReviews(businesses),
+            cursor="hand2"
+        )
+        review_btn.pack(side="left", padx=5)
+
+        # Print button
+        print_btn = ctk.CTkButton(
+            sortingBtnFrame,
+            text="🖨️",
+            fg_color="transparent",
+            hover_color=colors["highlight"],
+            text_color=colors["text"],
+            font=("Georgia", 15),
+            width=40,
+            height=32,
+            command=lambda: self.printBusinesses(businesses, sub_name),
+            cursor="hand2"
+        )
+        print_btn.pack(side="left", padx=2)
+        print_btn.bind("<Enter>", lambda e: self.updateInstructions("Generate and export a professional PDF report of these businesses."))
+
+        # Container where cards will actually be drawn
+        self.cardsFrame = ctk.CTkFrame(self.scrollable_frame, fg_color="transparent")
+        self.cardsFrame.pack(fill="both", expand=True, pady=20)
+        
+        # Populate cities dropdown
+        self.update_cities_dropdown()
+        
+        self.renderBusinessCards(businesses)
+
+    def update_cities_dropdown(self):
+        """Update the cities dropdown with current cities"""
+        cities = self.db.fetchCities()
+        city_names = ["All Cities"] + [city[1] for city in cities]
+        if hasattr(self, 'city_mb'):
+            self.city_mb.configure(values=city_names)
+
+    def handle_city_selection(self, choice):
+        """Handle city selection from dropdown"""
+        if choice == "All Cities":
+            self.displayBusinesses(1, "Explore", 0)
+        else:
+            cities = self.db.fetchCities()
+            for city_id, city_name in cities:
+                if city_name == choice:
+                    self.displayBusinesses(0, 0, city_id)
+                    break
+
+    # Selection of communities-------------------------------------------------------------------------------------------------------------------------------------
+    def renderBusinessCards(self, businesses):
+        colors = self.getColors()
+
+        # Clearing existing cards first
+        for widget in self.cardsFrame.winfo_children():
+            widget.destroy()
+
+        if not businesses:
+            no_biz_label = ctk.CTkLabel(
+                self.cardsFrame,
+                text="No businesses found.",
+                font=("Georgia", 12),
+                text_color=colors["text"],
+                fg_color="transparent"
+            )
+            no_biz_label.pack(pady=20)
+            return
+
+        for biz_id, biz_name, rating, review_count, description, website_link in businesses:
+            if any(field is None for field in [biz_name, description, website_link]):
+                continue
+
+            # Business Card Frame
+            bizCard = ctk.CTkFrame(
+                self.cardsFrame,
+                fg_color=colors["card"],
+                border_width=2,
+                border_color=colors["highlight"],
+                corner_radius=10
+            )
+            bizCard.pack(fill="x", pady=10, padx=50)
+
+            # Business Name
+            name_label = ctk.CTkLabel(
+                bizCard,
+                text=biz_name,
+                font=("Georgia", 18, "bold"),
+                text_color=colors["cardText"],
+                fg_color="transparent",
+                anchor="w"
+            )
+            name_label.pack(anchor="w", padx=15, pady=(10, 5))
+
+            # Rating Stars
+            rateValue = float(rating) if rating else 0.0
+            stars = "★" * int(rateValue) + "☆" * (5 - int(rateValue))
+            rating_label = ctk.CTkLabel(
+                bizCard,
+                text=f"{stars} {rateValue} ({review_count or 0} reviews)",
+                font=("Georgia", 12),
+                text_color=colors["ratingStars"],
+                fg_color="transparent",
+                anchor="w"
+            )
+            rating_label.pack(anchor="w", padx=15, pady=2)
+
+            # Description
+            desc_label = ctk.CTkLabel(
+                bizCard,
+                text=description,
+                font=("Georgia", 10),
+                text_color=colors["cardText"],
+                fg_color="transparent",
+                anchor="w",
+                wraplength=800,
+                justify="left"
+            )
+            desc_label.pack(anchor="w", padx=15, pady=5)
+
+            # Action Buttons Container
+            actBtnCont = ctk.CTkFrame(bizCard, fg_color="transparent")
+            actBtnCont.pack(fill="x", padx=15, pady=(5, 10))
+
+            # Website Button
+            website_btn = ctk.CTkButton(
+                actBtnCont,
+                text="Website Link",
+                fg_color="#D16459",
+                hover_color="#B04D3A",
+                text_color=colors["buttonText"],
+                font=("Georgia", 11),
+                width=120,
+                height=32,
+                corner_radius=5,
+                command=lambda link=website_link: self.openWebsite(link),
+                cursor="hand2"
+            )
+            website_btn.pack(side="right", padx=5)
+
+            if self.userEmail:
+                bmSaved = self.db.isBookmarked(self.userEmail, biz_id)
+                bmTxt = "🔖 Bookmarked" if bmSaved else "☆ Bookmark"
+                bmColor = colors["bookmarkAdded"] if bmSaved else colors["bookmarkRemove"]
+
+                # Bookmark Button (placed absolutely within the card)
+                bmBtn = ctk.CTkButton(
+                    bizCard,
+                    text=bmTxt,
+                    fg_color=bmColor,
+                    hover_color=colors["highlight"],
+                    text_color=colors["buttonText"],
+                    font=("Georgia", 11),
+                    width=100,
+                    height=30,
+                    corner_radius=5,
+                    cursor="hand2"
+                )
+                bmBtn.place(relx=1.0, rely=0.0, x=-10, y=10, anchor="ne")
+                bmBtn.configure(command=lambda b=biz_id, btn=bmBtn: self.onBookmarkToggle(b, btn))
+
+                # Rate Button
+                rate_btn = ctk.CTkButton(
+                    actBtnCont,
+                    text="Rate Business",
+                    fg_color=colors["button"],
+                    hover_color=colors["highlight"],
+                    text_color=colors["buttonText"],
+                    font=("Georgia", 11),
+                    width=120,
+                    height=32,
+                    corner_radius=5,
+                    command=lambda b_id=biz_id, b_name=biz_name: self.openRatingPopup(b_id, b_name),
+                    cursor="hand2"
+                )
+                rate_btn.pack(side="right", padx=5)
+
+                # Review Button
+                review_btn = ctk.CTkButton(
+                    actBtnCont,
+                    text="Write a Review",
+                    fg_color=colors["button"],
+                    hover_color=colors["highlight"],
+                    text_color=colors["buttonText"],
+                    font=("Georgia", 11),
+                    width=120,
+                    height=32,
+                    corner_radius=5,
+                    command=lambda b_id=biz_id, b_name=biz_name:
+                        self.openReviewPopup(self.root, self.db, b_id, b_name),
+                    cursor="hand2"
+                )
+                review_btn.pack(side="right", padx=5)
+
+                # Coupons Button (only shows when coupons are available)
+                active_coups = self.db.fetchCouponsByBusiness(biz_id)
+                if active_coups:
+                    coup_btn = ctk.CTkButton(
+                        actBtnCont,
+                        text="View Coupons",
+                        fg_color=colors["button"],
+                        hover_color=colors["highlight"],
+                        text_color=colors["buttonText"],
+                        font=("Georgia", 11),
+                        width=120,
+                        height=32,
+                        corner_radius=5,
+                        command=lambda b_id=biz_id, b_name=biz_name: self.showBusinessCoupons(b_id, b_name),
+                        cursor="hand2"
+                    )
+                    coup_btn.pack(side="right", padx=5)
+
+    # Function that creates the homepage when program is runs
+    def homeUi(self):
+        """Creates the homepage when program runs"""
+        colors = self.getColors()
+
+        # If mainPageFrame already exists, destroy it and create a new one
+        if hasattr(self, 'mainPageFrame'):
+            try:
+                self.mainPageFrame.destroy()
+            except:
+                pass
+
+        # Make sure results container is hidden when showing home
+        self.resultsContainer.pack_forget()  # If using pack
+        # OR
+        # self.resultsContainer.grid_forget()  # If using grid (depending on your layout)
+
+        # Create main page frame with explicit size and proper placement
+        self.mainPageFrame = ctk.CTkFrame(
+            self.root, 
+            fg_color="transparent",
+            width=1000,  # Give it an explicit width
+            height=500   # Give it an explicit height
+        )
+        
+        # Center it properly
+        self.mainPageFrame.place(relx=0.5, rely=0.5, anchor="center")
+        
+        # Ensure the frame expands to fit content
+        self.mainPageFrame.grid_propagate(True)
+        self.mainPageFrame.pack_propagate(False)  # Prevent shrinking
+
+        try:
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            imgPath = os.path.join(script_dir, "logo.png")
+            img = Image.open(imgPath).resize((500, 320))
+            self.logo_image = ctk.CTkImage(light_image=img, dark_image=img, size=(500, 320))
+            logoLabel = ctk.CTkLabel(
+                self.mainPageFrame,
+                image=self.logo_image,
+                text="",
+                fg_color="transparent"
+            )
+            logoLabel.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        except Exception as e:
+            print(f"Logo error: {e}")
+            logoLabel = ctk.CTkLabel(
+                self.mainPageFrame,
+                text="[Logo Error]",
+                font=("Georgia", 20),
+                text_color=colors["text"],
+                fg_color="transparent"
+            )
+            logoLabel.grid(row=0, column=0, padx=10, pady=10)
+
+        # Pibbit title
+        title_label = ctk.CTkLabel(
+            self.mainPageFrame,
+            text="PIBBIT",
+            font=("Georgia", 100, "bold"),
+            text_color=colors["text"],
+            fg_color="transparent"
+        )
+        title_label.grid(row=0, column=1, sticky="w", padx=10, pady=10)
+
+        # Slogan with special color handling
+        slogan_color = "#6E2F20" if not self.darkMode else "#FFA07A"
+        slogan_label = ctk.CTkLabel(
+            self.mainPageFrame,
+            text="Local business now becomes just a PIBBIT away",
+            font=("Georgia", 25),
+            text_color=slogan_color,
+            fg_color="transparent",
+            wraplength=600  # Prevent text from going off-screen
+        )
+        slogan_label.grid(row=1, column=1, sticky="w", padx=10, pady=10)
+        
+        # Configure grid weights to ensure proper expansion
+        self.mainPageFrame.grid_columnconfigure(0, weight=1)
+        self.mainPageFrame.grid_columnconfigure(1, weight=2)
+        self.mainPageFrame.grid_rowconfigure(0, weight=1)
+        self.mainPageFrame.grid_rowconfigure(1, weight=1)
+    # Generating Customizable Report-----------------------------------------------------------------------------------------------------------------------
+    def printBusinesses(self, businesses, catName):
+        self.updateInstructions("Preparing PDF report... Please wait.")
+        # Filtering input data by using list comprehension. if business is null then it removes it
+        filterInData = [b for b in businesses if b[1] and b[1] != "None"]
+
+        if not filterInData:
+            messagebox.showwarning("Print Error", "No valid businesses available to print.")
+            return
+
+        # This stops the pdf from printing in the vscode editor by using the system's temporary directory
+        tempDirectory = tempfile.gettempdir()
+        fileName = os.path.join(tempDirectory, f"{catName}_Report.pdf")
+
+        try:
+            printCanv = canvas.Canvas(fileName, pagesize=letter)
+            width, height = letter
+            # managing the y-coordinate
+            y = height - 1 * inch
+
+            # Header
+            printCanv.setFont("Helvetica-Bold", 20)
+            printCanv.drawString(1 * inch, y, "PIBBIT Business Report")
+            y -= 0.3 * inch
+            printCanv.setFont("Helvetica", 12)
+            printCanv.drawString(1 * inch, y, f"Category: {catName}")
+            y -= 0.5 * inch
+            printCanv.line(1 * inch, y + 0.1 * inch, 7.5 * inch, y + 0.1 * inch)
+
+            for biz in filterInData:
+                if y < 1.5 * inch:  # Makes sure that when the businesses reach the bottom of the page, it automatically creates a new page to reset y to the top
+                    printCanv.showPage()
+                    y = height - 1 * inch
+
+                # Unpacks the tuples easily and directly
+                _, name, rating, reviews, desc, link = biz
+
+                # Businesses attributes directly to the pdf
+                printCanv.setFont("Helvetica-Bold", 14)
+                printCanv.drawString(1 * inch, y, str(name))
+                y -= 0.2 * inch
+
+                printCanv.setFont("Helvetica", 10)
+                printCanv.drawString(1 * inch, y, f"Rating: {rating or 0} | Reviews: {reviews or 0}")
+                y -= 0.2 * inch
+
+                printCanv.setFont("Helvetica-Oblique", 10)
+                description = str(desc)
+                if len(description) > 90:
+                    description = description[:87] + "..."
+                printCanv.drawString(1 * inch, y, description)
+                y -= 0.2 * inch
+
+                printCanv.setFont("Helvetica", 10)
+                printCanv.setFillColorRGB(0, 0, 1)
+                printCanv.drawString(1 * inch, y, f"Website: {link}")
+                printCanv.setFillColorRGB(0, 0, 0)
+
+                y -= 0.4 * inch
+
+            printCanv.save()
+
+            # Opening the PDF automatically from the temp location
+            os.startfile(fileName)
+            self.updateInstructions("Report generated successfully!")
+        # In case of an error, it notifies user
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not generate PDF: {e}")
+
+    # Coupons and Deals--------------------------------------------------------------------------------------------------------------------------------
+    def showBusinessCoupons(self, biz_id, biz_name):
+        colors = self.getColors()
+        self.updateInstructions(f"Viewing deals for {biz_name}. Use the codes at checkout!")
+        
+        # Create a small popup window
+        popup = ctk.CTkToplevel(self.root)
+        popup.title(f"Deals for {biz_name}")
+        popup.geometry("500x400")
+        popup.configure(fg_color=colors["card"])
+
+        # Make popup modal
+        popup.grab_set()
+
+        title_label = ctk.CTkLabel(
+            popup,
+            text=f"Coupons for {biz_name}",
+            font=("Georgia", 14, "bold"),
+            text_color=colors["cardText"],
+            fg_color="transparent",
+            pady=10
+        )
+        title_label.pack()
+
+        # Fetch specific coupons
+        coupons = self.db.fetchCouponsByBusiness(biz_id)
+
+        if not coupons:
+            no_coup_label = ctk.CTkLabel(
+                popup,
+                text="No active coupons for this business.",
+                font=("Georgia", 11),
+                text_color=colors["cardText"],
+                fg_color="transparent"
+            )
+            no_coup_label.pack(pady=50)
+        else:
+            # Create scrollable frame for coupons
+            scroll_frame = ctk.CTkScrollableFrame(popup, fg_color="transparent")
+            scroll_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+            for title, description, coupon_code in coupons:
+                # Coupon card
+                f = ctk.CTkFrame(
+                    scroll_frame,
+                    fg_color=colors["bg"] if self.darkMode else "white",
+                    border_width=2,
+                    border_color=colors["highlight"],
+                    corner_radius=8
+                )
+                f.pack(fill="x", pady=5)
+
+                # Coupon title
+                title_label = ctk.CTkLabel(
+                    f,
+                    text=title,
+                    font=("Georgia", 12, "bold"),
+                    text_color=colors["accent"],
+                    fg_color="transparent",
+                    anchor="w"
+                )
+                title_label.pack(anchor="w", padx=10, pady=(10, 5))
+
+                # Coupon description
+                desc_label = ctk.CTkLabel(
+                    f,
+                    text=description,
+                    font=("Georgia", 10),
+                    text_color=colors["cardText"],
+                    fg_color="transparent",
+                    anchor="w",
+                    wraplength=400
+                )
+                desc_label.pack(anchor="w", padx=10, pady=2)
+
+                # Coupon code
+                code_label = ctk.CTkLabel(
+                    f,
+                    text=f"CODE: {coupon_code}",
+                    font=("Courier", 12, "bold"),
+                    text_color="#6E2F20",
+                    fg_color="#F0F0F0",
+                    corner_radius=5,
+                    padx=10,
+                    pady=5
+                )
+                code_label.pack(anchor="w", padx=10, pady=(5, 10))
+
+    def showAllCouponsPage(self):
+        colors = self.getColors()
+        self.current_view = 'coupons'
+        self.updateInstructions("Local Savings: Browse all active deals in your area.")
+
+        # Resetting UI
+        self.mainPageFrame.place_forget()
+        for widget in self.resultsContainer.winfo_children():
+            widget.destroy()
+
+        # Create scrollable frame for coupons
+        self.scrollable_frame = ctk.CTkScrollableFrame(
+            self.resultsContainer,
+            fg_color=colors["bg"],
+            corner_radius=0
+        )
+        self.scrollable_frame.pack(fill="both", expand=True)
+
+        # Header
+        header_label = ctk.CTkLabel(
+            self.scrollable_frame,
+            text="All Local Deals",
+            font=("Georgia", 24, "bold"),
+            text_color=colors["text"],
+            fg_color="transparent",
+            pady=20
+        )
+        header_label.pack()
+
+        all_coupons = self.db.fetchAllCoupons()
+
+        # Rendering Cards
+        for biz_name, title, desc, code in all_coupons:
+            # Consistent Card Frame
+            card = ctk.CTkFrame(
+                self.scrollable_frame,
+                fg_color=colors["card"],
+                border_width=2,
+                border_color=colors["highlight"],
+                corner_radius=10
+            )
+            card.pack(fill="x", pady=10, padx=50)
+
+            # Business Name
+            biz_label = ctk.CTkLabel(
+                card,
+                text=biz_name,
+                font=("Georgia", 18, "bold"),
+                text_color=colors["cardText"],
+                fg_color="transparent",
+                anchor="w"
+            )
+            biz_label.pack(anchor="w", padx=15, pady=(10, 5))
+
+            # Coupon Title
+            title_label = ctk.CTkLabel(
+                card,
+                text=title,
+                font=("Georgia", 14, "italic"),
+                text_color=colors["accent"],
+                fg_color="transparent",
+                anchor="w"
+            )
+            title_label.pack(anchor="w", padx=15, pady=2)
+
+            # Coupon Description
+            desc_label = ctk.CTkLabel(
+                card,
+                text=desc,
+                font=("Georgia", 11),
+                text_color=colors["cardText"],
+                fg_color="transparent",
+                anchor="w",
+                wraplength=800,
+                justify="left"
+            )
+            desc_label.pack(anchor="w", padx=15, pady=5)
+
+            # Footer with code
+            footer = ctk.CTkFrame(card, fg_color="transparent")
+            footer.pack(fill="x", padx=15, pady=(5, 10))
+
+            code_label = ctk.CTkLabel(
+                footer,
+                text=f"CODE: {code}",
+                font=("Courier", 14, "bold"),
+                text_color="#6E2F20",
+                fg_color="#F0F0F0",
+                corner_radius=5,
+                padx=10,
+                pady=5
+            )
+            code_label.pack(side="left")
+
+    # Handling Captcha and bot safety after opening login and signup page--------------------------------------------------------------------------------------------------
+    def openSignUp(self):
+        self.root.destroy()
+        from signup import SignUp
+        root = ctk.CTk()  # Use CTk instead of Tk
+        SignUp(root)
+        root.mainloop()
+
+    def openLogin(self):
+        self.root.destroy()
+        from login import Login
+        root = ctk.CTk()  # Use CTk instead of Tk
+        Login(root)
+        root.mainloop()
+
+    def openWebsite(self, website_link):
+        try:
+            self.updateInstructions(f"Opening browser to visit {website_link}...")
+            webbrowser.open(website_link, new=2)
+        except Exception as e:
+            print(f"Error: {e}")
+
+    def applyTheme(self):
+        colors = self.getColors()
+
+        # Update appearance mode
+        ctk.set_appearance_mode("dark" if self.darkMode else "light")
+
+        # Root background
+        self.root.configure(fg_color=colors["bg"])
+
+        # Update navigation bar buttons if they exist
+        if hasattr(self, 'mb'):
+            self.mb.configure(fg_color=colors["button"], button_color=colors["button"])
+
+        if hasattr(self, 'coupsNDeals'):
+            self.coupsNDeals.configure(fg_color=colors["button"])
+
+        if hasattr(self, 'helpBtn'):
+            self.helpBtn.configure(fg_color=colors["button"])
+
+        if hasattr(self, 'bookmarks'):
+            self.bookmarks.configure(fg_color=colors["button"])
+
+        if hasattr(self, 'darkBtn'):
+            self.darkBtn.configure(
+                text="☀️ Light Mode" if self.darkMode else "🌙 Dark Mode",
+                fg_color=colors["button"]
+            )
+
+        if hasattr(self, 'profileBtn'):
+            self.profileBtn.configure(fg_color=colors["nav"], button_color=colors["button"])
+
+        if hasattr(self, 'signup_btn'):
+            self.signup_btn.configure(fg_color=colors["button"])
+
+        if hasattr(self, 'login_btn'):
+            self.login_btn.configure(fg_color=colors["button"])
+
+        # Footer
+        self.footer.configure(fg_color=colors["footer"], text_color="white")
+
+        # Update results container
+        self.resultsContainer.configure(fg_color=colors["bg"])
+        
+        if hasattr(self, 'scrollable_frame'):
+            self.scrollable_frame.configure(fg_color=colors["bg"])
+
+        self.homeUi()
+
+        if not self.mainPageFrame.winfo_ismapped():
+            self.mainPageFrame.place_forget()
+
+        # Refresh current view
+        self.refreshCurrentView()
+
+    def toggleDarkMode(self):
+        self.darkMode = not self.darkMode
+        self.applyTheme()
+
+    def refreshCurrentView(self):
+        """Refresh the current view to apply theme changes"""
+        if self.current_view == 'businesses' and self.current_sub_id is not None:
+            self.displayBusinesses(self.current_sub_id, self.current_sub_name, self.current_city_id)
+        elif self.current_view == 'coupons':
+            self.showAllCouponsPage()
+    def go_home(self):
+        """Navigate to home page properly"""
+        self.updateInstructions("Welcome Home! Select a category to start.")
+        
+        # Hide results container
+        self.resultsContainer.pack_forget()  # or grid_forget()
+        
+        # Clear any existing widgets in results container
+        for widget in self.resultsContainer.winfo_children():
+            widget.destroy()
+        
+        # Show home page
+        self.homeUi()

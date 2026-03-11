@@ -60,7 +60,8 @@ class RatingPopup:
         success = self.db.updateBusinessRating(self.biz_id, self.ratingGiven)
         if success:
             self.popUp.destroy()
-            self.refreshCallBck(1, "Explore", 0) 
+            if (self.refreshCallBck):
+                self.refreshCallBck(1, "Explore", 0) 
         else:
             messagebox.showerror("Error", "Could not submit rating.")
             

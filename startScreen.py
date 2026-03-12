@@ -54,11 +54,11 @@ class StartScreen:
         self.db = Database()
         self.root.title("PIBBIT")
         self.root.state("zoomed")
-        self.root.configure(bg="#B2C9AB")        
+        self.root.configure(bg="#BACAB8")        
         self.userEmail = userEmail  #User email that user inputs in sign up/login
-        self.navBar = tk.Frame(self.root, bg="#B2C9AB")
+        self.navBar = tk.Frame(self.root, bg="#BACAB8")
         self.navBar.pack(side="top", fill="x", padx=20, pady=20)
-        self.resultsContainer = tk.Frame(self.root, bg="#B2C9AB")  #Creating frame for the results container which will hold a lot of pages
+        self.resultsContainer = tk.Frame(self.root, bg="#BACAB8")  #Creating frame for the results container which will hold a lot of pages
         
         self.darkMode = False
         self.current_view = None  #Track current view for theme refresh
@@ -73,8 +73,9 @@ class StartScreen:
 
         #Shared colors between the two
         baseColors = {
-            "gold": "#B2C9AB",
-            "green": "#2D5A27",
+            "lightGreen": "#BACAB8",
+            "darkGreen": "#2B3A29",
+            "dark": "#241E2E",
             "lightCard": "#DDE0D6",
             "olive": "#6B8E23",
             "bookmarkGold": "#E1AD01",
@@ -82,19 +83,20 @@ class StartScreen:
 
         #Light Theme
         self.lightColors = {
-            "bg": baseColors["gold"],
-            "nav": baseColors["gold"],
+            "bg": baseColors["lightGreen"],
+            "nav": baseColors["lightGreen"],
             "card": baseColors["lightCard"],
             "cardText": "black",
-            "accent": baseColors["green"],
+            "accent": baseColors["dark"],
+            "recommended": baseColors["dark"],
             "accentText": "white",
             "text": "black",
-            "footer": baseColors["green"],
-            "button": baseColors["green"],
-            "buttonText": "white",
+            "footer": baseColors["dark"],
+            "button": baseColors["lightCard"],
+            "buttonText": "black",
             "highlight": baseColors["olive"],
             "bookmarkAdded": baseColors["bookmarkGold"],
-            "bookmarkRemove": "#1D2E28",
+            "bookmarkRemove": "#BACAB8",
             "ratingStars": baseColors["bookmarkGold"]
         }
 
@@ -104,15 +106,16 @@ class StartScreen:
             "nav": "#2B2B2B",
             "card": "#333333",
             "cardText": "white",
-            "accent": "#3D7A35",
+            "accent": "#241E2E",
+            "recommended": "white",
             "accentText": "white",
             "text": "white",
             "footer": "#111111",
-            "button": "#3D7A35",
-            "buttonText": "white",
+            "button": "#D1D2CB",
+            "buttonText": "black",
             "highlight": "#4A7023",
             "bookmarkAdded": "#B8860B",
-            "bookmarkRemove": baseColors["green"],
+            "bookmarkRemove": "#BACAB8",
             "ratingStars": "#FFD700"
         }
 
@@ -286,7 +289,7 @@ class StartScreen:
         self.mainPageFrame.place_forget()
         #Clears the result container to display this page
         for widget in self.resultsContainer.winfo_children():
-            widget.destroy()  
+            widget.destroy()
         #Packs the container
         self.resultsContainer.pack(fill="both", expand=True)
         #Apply theme to results container
@@ -479,20 +482,20 @@ class StartScreen:
         #If explore is clicked, it displays all the businesses
         if sub_id == 1:
             tk.Label(top_bar, text="All Businesses:", 
-                  font=("Georgia", 20, "bold"), bg=colors["bg"], fg=colors["text"]).pack(side="left")
+                  font=("Segoe Print", 20, "bold"), bg=colors["bg"], fg=colors["text"]).pack(side="left")
             businesses = self.fetchAllBusinesses()
         elif sub_id == -1:
             #Displays businesses that the user has saved
             tk.Label(top_bar, text="Your Bookmarked Businesses:", 
-                  font=("Georgia", 20, "bold"), bg=colors["bg"], fg=colors["text"]).pack(side="left")
+                  font=("Segoe Print", 20, "bold"), bg=colors["bg"], fg=colors["text"]).pack(side="left")
             businesses = self.db.fetchBookmarkedBusinesses(self.userEmail)
         elif sub_id == 0 and city_id != 0:
             tk.Label(top_bar, text=f"Businesses in Selected City:", 
-                  font=("Georgia", 20, "bold"), bg=colors["bg"], fg=colors["text"]).pack(side="left")
+                  font=("Segoe Print", 20, "bold"), bg=colors["bg"], fg=colors["text"]).pack(side="left")
             businesses = self.db.fetchBusinessByCity(city_id)
         else:
             tk.Label(top_bar, text=f"Results for {sub_name}:", 
-                  font=("Georgia", 20, "bold"), bg=colors["bg"], fg=colors["text"]).pack(side="left")
+                  font=("Segoe Print", 20, "bold"), bg=colors["bg"], fg=colors["text"]).pack(side="left")
             businesses = self.fetchBusinessesBySubs(sub_id) 
 
         #Temporary frame reference
@@ -510,9 +513,9 @@ class StartScreen:
         if recommended:
             tk.Label(self.scrollingFrame,
                 text="✨ Recommended For You",
-                font=("Georgia", 22, "bold"),
+                font=("Segoe Print", 22, "bold"),
                 bg=colors["bg"],
-                fg=colors["accent"]
+                fg=colors["recommended"]
             ).pack(anchor="w", padx=50, pady=(20, 10))
 
             recommendedFrame = tk.Frame(self.scrollingFrame, bg=colors["bg"])
@@ -524,7 +527,7 @@ class StartScreen:
             #Separate recommended from businesses
             tk.Label(self.scrollingFrame,
             text="All Businesses",
-            font=("Georgia", 18, "bold"),
+            font=("Segoe Print", 18, "bold"),
             bg=colors["bg"],
             fg=colors["text"]).pack(anchor="w", padx=50, pady=(30, 10))
 
@@ -540,7 +543,7 @@ class StartScreen:
                                bg=colors["button"], fg=colors["buttonText"], font=("Georgia", 10), 
                                width=15, relief="flat")
         self.city_mb.pack(side="left", padx=5)
-        self.city_mb.bind("<Enter>", lambda e: self.updateInstructions("Filter results by specific Georgia communities."))
+        self.city_mb.bind("<Enter>", lambda e: self.updateInstructions("Filter results by specific Segoe Print communities."))
 
         #Creating the empty Menu object
         self.citySelectDrpMenu = tk.Menu(self.city_mb, tearoff=0, bg=colors["button"], fg=colors["buttonText"])
@@ -558,7 +561,7 @@ class StartScreen:
                   command=lambda: self.sortByReviews(businesses)).pack(side="left", padx=5)
         
         print_btn = tk.Button(sortingBtnFrame, text="🖨️", bg=colors["bg"], fg=colors["text"], 
-                  font=("Georgia", 15), width=4, relief="flat", cursor="hand2",
+                  font=("georgia", 15), width=4, relief="flat", cursor="hand2",
                   command=lambda: self.printBusinesses(businesses, sub_name))
         print_btn.pack(side="left", padx=2)
         print_btn.bind("<Enter>", lambda e: self.updateInstructions("Generate and export a professional PDF report of these businesses."))
@@ -645,7 +648,7 @@ class StartScreen:
             
             #Business name
             tk.Label(contentFrame, text=biz_name,
-                    font=("Georgia", 18, "bold"),
+                    font=("Segoe Print", 18, "bold"),
                     bg=colors["card"],
                     fg=colors["cardText"]).pack(anchor="w")
             
@@ -653,10 +656,10 @@ class StartScreen:
             rateValue = float(rating) if rating else 0.0
             stars = "★" * int(rateValue) + "☆" * (5 - int(rateValue))
             tk.Label(contentFrame, text=f"{stars} {rateValue} ({review_count or 0} reviews)", 
-                    font=("Georgia", 12), bg=colors["card"], fg=colors["ratingStars"]).pack(anchor="w")
+                    font=("Segoe Print", 12), bg=colors["card"], fg=colors["ratingStars"]).pack(anchor="w")
             
             #Description
-            tk.Label(contentFrame, text=f"{description}", font=("Georgia", 10), bg=colors["card"], fg=colors["cardText"],
+            tk.Label(contentFrame, text=f"{description}", font=("Segoe Print", 10), bg=colors["card"], fg=colors["cardText"],
                     wraplength=700, justify="left").pack(anchor='w', pady=5)
             
             #Action Buttons Container
@@ -721,11 +724,11 @@ class StartScreen:
         except:
             tk.Label(self.mainPageFrame, text="[Logo Error]", 
                     bg=colors["bg"], fg=colors["text"], 
-                    font=("Georgia", 20)).grid(row=0, column=0)
+                    font=("Segoe Print", 20)).grid(row=0, column=0)
         
         #Pibbit title and slogan
         tk.Label(self.mainPageFrame, text="PIBBIT", 
-                font=("Georgia", 100, "bold"),
+                font=("Segoe Print", 100, "bold"),
                 fg=colors["text"], bg=colors["bg"]).grid(row=0, column=1, sticky="w")
         
         #Slogan with special color handling
@@ -818,23 +821,23 @@ class StartScreen:
         popup.configure(bg=colors["card"])
 
         tk.Label(popup, text=f"Coupons for {biz_name}", 
-                font=("Georgia", 14, "bold"), bg=colors["card"], fg=colors["cardText"], pady=10).pack()
+                font=("Segoe Print", 14, "bold"), bg=colors["card"], fg=colors["cardText"], pady=10).pack()
 
         #Fetch specific coupons
         coupons = self.db.fetchCouponsByBusiness(biz_id)
 
         if not coupons:
             tk.Label(popup, text="No active coupons for this business.", 
-                    font=("Georgia", 11), bg=colors["card"], fg=colors["cardText"]).pack(pady=50)
+                    font=("Segoe Print", 11), bg=colors["card"], fg=colors["cardText"]).pack(pady=50)
         else:
             for title, description, coupon_code in coupons:
                 f = tk.Frame(popup, bg=colors["bg"] if self.darkMode else "white", 
                            relief="groove", bd=2, padx=10, pady=10)
                 f.pack(fill="x", padx=20, pady=5)
                 
-                tk.Label(f, text=title, font=("Georgia", 12, "bold"), 
+                tk.Label(f, text=title, font=("Segoe Print", 12, "bold"), 
                         bg=f.cget('bg'), fg=colors["accent"]).pack(anchor="w")
-                tk.Label(f, text=description, font=("Georgia", 10), 
+                tk.Label(f, text=description, font=("Segoe Print", 10), 
                         bg=f.cget('bg'), fg=colors["cardText"], wraplength=400).pack(anchor="w")
                 
                 #The actual code
@@ -875,7 +878,7 @@ class StartScreen:
         canvas.pack(side="left", fill="both", expand=True)
 
         #Standard Header
-        tk.Label(self.scrollingFrame, text="All Local Deals", font=("Georgia", 24, "bold"), 
+        tk.Label(self.scrollingFrame, text="All Local Deals", font=("Segoe Print", 24, "bold"), 
                  bg=colors["bg"], fg=colors["text"], pady=20).pack()
 
         all_coupons = self.db.fetchAllCoupons()
@@ -891,13 +894,13 @@ class StartScreen:
             card.pack(fill="x", pady=10, padx=50)
 
             #Business Name
-            tk.Label(card, text=biz_name, font=("Georgia", 18, "bold"), 
+            tk.Label(card, text=biz_name, font=("Segoe Print", 18, "bold"), 
                     bg=colors["card"], fg=colors["cardText"]).pack(anchor="w")
             
             #Coupon Details
-            tk.Label(card, text=title, font=("Georgia", 14, "italic"), 
+            tk.Label(card, text=title, font=("Segoe Print", 14, "italic"), 
                     bg=colors["card"], fg=colors["accent"]).pack(anchor="w")
-            tk.Label(card, text=desc, font=("Georgia", 11), 
+            tk.Label(card, text=desc, font=("Segoe Print", 11), 
                     bg=colors["card"], fg=colors["cardText"], wraplength=800, justify="left").pack(anchor="w", pady=5)
             
             #Standardized Footer Area

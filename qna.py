@@ -26,9 +26,9 @@ class QnaPage:
         """Builds and displays the Q&A UI."""
         
         #Creating the scrollable Q&A List first
-        self.qnaCanvas = tk.Canvas(self.container, bg="#DAA520", highlightthickness=0)
+        self.qnaCanvas = tk.Canvas(self.container, bg="#BACAB8", highlightthickness=0)
         self.qnaScrollBar = tk.Scrollbar(self.container, orient="vertical", command=self.qnaCanvas.yview)
-        self.qnaListContainer = tk.Frame(self.qnaCanvas, bg="#DAA520")
+        self.qnaListContainer = tk.Frame(self.qnaCanvas, bg="#BACAB8")
         
         self.qnaCanvas.create_window((0, 0), window=self.qnaListContainer, anchor="nw", width=self.root.winfo_width()-100)
         self.qnaCanvas.configure(yscrollcommand=self.qnaScrollBar.set)
@@ -37,10 +37,10 @@ class QnaPage:
         self.qnaCanvas.pack(side="bottom", fill="both", expand=True, padx=50)
 
         #Creating the search area
-        searchBarFrame = tk.Frame(self.container, bg="#DAA520", pady=20)
+        searchBarFrame = tk.Frame(self.container, bg="#BACAB8", pady=20)
         searchBarFrame.pack(side="top", fill="x") # Pack this at the top
 
-        tk.Label(searchBarFrame, text="How can we help you?", font=("Georgia", 24, "bold"), bg="#DAA520").pack()
+        tk.Label(searchBarFrame, text="How can we help you?", font=("Georgia", 24, "bold"), bg="#BACAB8").pack()
         
         self.searchBarVar = tk.StringVar()
         
@@ -71,7 +71,7 @@ class QnaPage:
                 tk.Label(f, text=a, font=("Georgia", 11), bg="#DDE0D6", wraplength=800, justify="left", anchor="w").pack(fill="x", pady=(5,0))
 
         if not found:
-            tk.Label(self.qnaListContainer, text="No matches found.", font=("Georgia", 12), bg="#DAA520").pack(pady=20)
+            tk.Label(self.qnaListContainer, text="No matches found.", font=("Georgia", 12), bg="#BACAB8").pack(pady=20)
 
         self.qnaListContainer.update_idletasks()
         self.qnaCanvas.configure(scrollregion=self.qnaCanvas.bbox("all"))

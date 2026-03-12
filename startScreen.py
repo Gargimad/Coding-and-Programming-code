@@ -482,54 +482,56 @@ class StartScreen:
         #If explore is clicked, it displays all the businesses
         if sub_id == 1:
             tk.Label(top_bar, text="All Businesses:", 
-                  font=("Segoe Print", 20, "bold"), bg=colors["bg"], fg=colors["text"]).pack(side="left")
+                font=("Segoe Print", 20, "bold"), bg=colors["bg"], fg=colors["text"]).pack(side="left")
             businesses = self.fetchAllBusinesses()
         elif sub_id == -1:
             #Displays businesses that the user has saved
             tk.Label(top_bar, text="Your Bookmarked Businesses:", 
-                  font=("Segoe Print", 20, "bold"), bg=colors["bg"], fg=colors["text"]).pack(side="left")
+                font=("Segoe Print", 20, "bold"), bg=colors["bg"], fg=colors["text"]).pack(side="left")
             businesses = self.db.fetchBookmarkedBusinesses(self.userEmail)
         elif sub_id == 0 and city_id != 0:
             tk.Label(top_bar, text=f"Businesses in Selected City:", 
-                  font=("Segoe Print", 20, "bold"), bg=colors["bg"], fg=colors["text"]).pack(side="left")
+                font=("Segoe Print", 20, "bold"), bg=colors["bg"], fg=colors["text"]).pack(side="left")
             businesses = self.db.fetchBusinessByCity(city_id)
         else:
             tk.Label(top_bar, text=f"Results for {sub_name}:", 
-                  font=("Segoe Print", 20, "bold"), bg=colors["bg"], fg=colors["text"]).pack(side="left")
+                font=("Segoe Print", 20, "bold"), bg=colors["bg"], fg=colors["text"]).pack(side="left")
             businesses = self.fetchBusinessesBySubs(sub_id) 
 
         #Temporary frame reference
         self.cardsFrame = tk.Frame(self.scrollingFrame)
 
-        #Get personalized recommendations
-        all_biz = self.fetchAllBusinesses()
-        recommended = self.getRecommendedBusinesses(all_biz)
+        # ONLY show recommendations if NOT in bookmarks view
+        if sub_id != -1:  # Don't show recommendations for bookmarks
+            #Get personalized recommendations
+            all_biz = self.fetchAllBusinesses()
+            recommended = self.getRecommendedBusinesses(all_biz)
 
-        #Remove recommended from main list to avoid duplicates
-        recommended_ids = {b[0] for b in recommended}
-        businesses = [b for b in businesses if b[0] not in recommended_ids]
+            #Remove recommended from main list to avoid duplicates
+            recommended_ids = {b[0] for b in recommended}
+            businesses = [b for b in businesses if b[0] not in recommended_ids]
 
-        #Show recommended section first
-        if recommended:
-            tk.Label(self.scrollingFrame,
-                text="✨ Recommended For You",
-                font=("Segoe Print", 22, "bold"),
+            #Show recommended section first
+            if recommended:
+                tk.Label(self.scrollingFrame,
+                    text="✨ Recommended For You",
+                    font=("Segoe Print", 22, "bold"),
+                    bg=colors["bg"],
+                    fg=colors["recommended"]
+                ).pack(anchor="w", padx=50, pady=(20, 10))
+
+                recommendedFrame = tk.Frame(self.scrollingFrame, bg=colors["bg"])
+                recommendedFrame.pack(fill="x", padx=40)
+
+                self.cardsFrame = recommendedFrame
+                self.renderBusinessCards(recommended)
+
+                #Separate recommended from businesses
+                tk.Label(self.scrollingFrame,
+                text="All Businesses",
+                font=("Segoe Print", 18, "bold"),
                 bg=colors["bg"],
-                fg=colors["recommended"]
-            ).pack(anchor="w", padx=50, pady=(20, 10))
-
-            recommendedFrame = tk.Frame(self.scrollingFrame, bg=colors["bg"])
-            recommendedFrame.pack(fill="x", padx=40)
-
-            self.cardsFrame = recommendedFrame
-            self.renderBusinessCards(recommended)
-
-            #Separate recommended from businesses
-            tk.Label(self.scrollingFrame,
-            text="All Businesses",
-            font=("Segoe Print", 18, "bold"),
-            bg=colors["bg"],
-            fg=colors["text"]).pack(anchor="w", padx=50, pady=(30, 10))
+                fg=colors["text"]).pack(anchor="w", padx=50, pady=(30, 10))
 
         #Container where cards will actually be drawn
         self.cardsFrame = tk.Frame(self.scrollingFrame, bg=colors["bg"])
@@ -540,8 +542,8 @@ class StartScreen:
         sortingBtnFrame.pack(side="right")
         
         self.city_mb = tk.Menubutton(sortingBtnFrame, text="Select GA City ⏷", 
-                               bg=colors["button"], fg=colors["buttonText"], font=("Georgia", 10), 
-                               width=15, relief="flat")
+                            bg=colors["button"], fg=colors["buttonText"], font=("Georgia", 10), 
+                            width=15, relief="flat")
         self.city_mb.pack(side="left", padx=5)
         self.city_mb.bind("<Enter>", lambda e: self.updateInstructions("Filter results by specific Segoe Print communities."))
 
@@ -553,22 +555,20 @@ class StartScreen:
         self.city_mb.bind("<Button-1>", lambda e: self.displayCities())
         
         tk.Button(sortingBtnFrame, text="Highest Ratings", bg=colors["button"], fg=colors["buttonText"], 
-                  font=("Georgia", 10), width=15, relief="flat", cursor="hand2",
-                  command=lambda: self.sortByRatings(businesses)).pack(side="left", padx=5)
+                font=("Georgia", 10), width=15, relief="flat", cursor="hand2",
+                command=lambda: self.sortByRatings(businesses)).pack(side="left", padx=5)
         
         tk.Button(sortingBtnFrame, text="Most Reviewed", bg=colors["button"], fg=colors["buttonText"], 
-                  font=("Georgia", 10), width=15, relief="flat", cursor="hand2",
-                  command=lambda: self.sortByReviews(businesses)).pack(side="left", padx=5)
+                font=("Georgia", 10), width=15, relief="flat", cursor="hand2",
+                command=lambda: self.sortByReviews(businesses)).pack(side="left", padx=5)
         
         print_btn = tk.Button(sortingBtnFrame, text="🖨️", bg=colors["bg"], fg=colors["text"], 
-                  font=("georgia", 15), width=4, relief="flat", cursor="hand2",
-                  command=lambda: self.printBusinesses(businesses, sub_name))
+                font=("georgia", 15), width=4, relief="flat", cursor="hand2",
+                command=lambda: self.printBusinesses(businesses, sub_name))
         print_btn.pack(side="left", padx=2)
         print_btn.bind("<Enter>", lambda e: self.updateInstructions("Generate and export a professional PDF report of these businesses."))
         
-        print("Recommended:", recommended)
-        self.renderBusinessCards(businesses)
-        
+        self.renderBusinessCards(businesses)        
 #Selection of communities -------------------------------------------------------------------------------------------------------------------------------------
     def displayCities(self):
         colors = self.getColors()

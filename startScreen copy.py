@@ -1,28 +1,35 @@
-'''
+"""
 Gargi Madala, Grace Wu, Dhanvi Ramkumar
 Pibbit Start Screen
 FBLA- Coding and Programming
 26 January 2026
-'''
-#Imports------------------------------------------------------------------------------------------------------------------------------------
+"""
+
+#Imports ------------------------------------------------------------------------------------------------------------------------------------
 #Imports from libraries:
 import os
 import sys
+import math
+import tempfile
+import webbrowser
+from collections import Counter
 
 #Tkinter imports
+import customtkinter as ctk
 import tkinter as tk
-#from tkinter import *
 from tkinter import messagebox
 
 #Pillow imports
 from PIL import Image, ImageTk
 
-#Webbrowser import for opening external links
-import webbrowser
-
-#library imports for generating reports
+#ReportLab imports for generating reports
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
+from reportlab.pdfgen import canvas
+
+#Library imports for generating reports
+#from reportlab.lib.pagesizes import letter
+#from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
 import tempfile
 
@@ -31,8 +38,6 @@ from popUpControl import RatingPopup, ReviewPopup
 from db import Database
 from qna import QnaPage
 
-
-
 #Try/Except to help features fit into computers with different sizes
 try: 
     from ctypes import windll
@@ -40,75 +45,81 @@ try:
 except:
     pass
 
-#Class of StartScreen (In Pascal Case)-----------------------------------------------------------------------------------------------------------------------
+#Class of StartScreen (In Pascal Case) -----------------------------------------------------------------------------------------------------------------------
 class StartScreen:
-    #Innitializing the class
+    #Initializing the class
     def __init__(self, root, userEmail):
         #Connecting to database page and controlling tkinter application framework
         self.root = root
         self.db = Database()
         self.root.title("PIBBIT")
         self.root.state("zoomed")
-        self.root.configure(bg="#DAA520")        
-        self.userEmail = userEmail #User email that user inputs in sign up/login
-        self.navBar = tk.Frame(self.root, bg= "#DAA520")
+        self.root.configure(bg="#BACAB8")        
+        self.userEmail = userEmail  #User email that user inputs in sign up/login
+        self.navBar = tk.Frame(self.root, bg="#BACAB8")
         self.navBar.pack(side="top", fill="x", padx=20, pady=20)
-        self.resultsContainer = tk.Frame(self.root, bg="#DAA520") #Creating frame for the results container which will hold a lot of pages
+        self.resultsContainer = tk.Frame(self.root, bg="#BACAB8")  #Creating frame for the results container which will hold a lot of pages
         
         self.darkMode = False
-        self.current_view = None  # Track current view for theme refresh
+        self.current_view = None  #Track current view for theme refresh
         self.current_sub_id = None
         self.current_sub_name = None
         self.current_city_id = None
 
-        #Theme Colors-----------------------------------------------------------------------------------------
+        #Dictionary to store subcategory icons
+        self.subcategory_icons = {}
 
-        #shared colors between the two
+        #Theme Colors -----------------------------------------------------------------------------------------
+
+        #Shared colors between the two
         baseColors = {
-            "gold": "#DAA520",
-            "green": "#2D5A27",
+            "lightGreen": "#BACAB8",
+            "darkGreen": "#2B3A29",
+            "dark": "#241E2E",
             "lightCard": "#DDE0D6",
             "olive": "#6B8E23",
             "bookmarkGold": "#E1AD01",
         }
 
-        # Light Theme
+        #Light Theme
         self.lightColors = {
-            "bg": baseColors["gold"],
-            "nav": baseColors["gold"],
+            "bg": baseColors["lightGreen"],
+            "nav": baseColors["lightGreen"],
             "card": baseColors["lightCard"],
             "cardText": "black",
-            "accent": baseColors["green"],
+            "accent": baseColors["dark"],
+            "recommended": baseColors["dark"],
             "accentText": "white",
             "text": "black",
-            "footer": baseColors["green"],
-            "button": baseColors["green"],
-            "buttonText": "white",
+            "footer": baseColors["dark"],
+            "button": baseColors["lightCard"],
+            "buttonText": "black",
             "highlight": baseColors["olive"],
             "bookmarkAdded": baseColors["bookmarkGold"],
-            "bookmarkRemove": "#1D2E28",
+            "bookmarkRemove": "#BACAB8",
             "ratingStars": baseColors["bookmarkGold"]
         }
 
-        # Dark Theme
+        #Dark Theme
         self.darkColors = {
             "bg": "#1E1E1E",
             "nav": "#2B2B2B",
             "card": "#333333",
             "cardText": "white",
-            "accent": "#3D7A35",
+            "accent": "#241E2E",
+            "recommended": "white",
             "accentText": "white",
             "text": "white",
             "footer": "#111111",
-            "button": "#3D7A35",
-            "buttonText": "white",
+            "button": "#D1D2CB",
+            "buttonText": "black",
             "highlight": "#4A7023",
             "bookmarkAdded": "#B8860B",
-            "bookmarkRemove": baseColors["green"],
+            "bookmarkRemove": "#BACAB8",
             "ratingStars": "#FFD700"
         }
 
-#Instructions------------------------------------------------------------------------------------------------------------------------------------------
+        #Instructions ------------------------------------------------------------------------------------------------------------------------------------------
         #This StringVar allows us to update the text at the bottom of the screen dynamically
         self.instructionVar = tk.StringVar(value="Welcome to PIBBIT! Use 'Explore' to find local businesses.")
         self.footer = tk.Label(
@@ -123,45 +134,70 @@ class StartScreen:
         )
         self.footer.pack(side="bottom", fill="x")
 
-        self.homeUi() #Creates the front Pibbit Page
-        self.createDynamicNav() #Creates the navigation bar at the top
+        self.homeUi()  #Creates the front Pibbit Page
+        self.createDynamicNav()  #Creates the navigation bar at the top
+        self.business_images = {}
         
-    # Function to update the footer text easily
+    #Function to update the footer text easily
     def updateInstructions(self, text):
         self.instructionVar.set(text)
         
-    # Helper method to get current theme colors
+    #Helper method to get current theme colors
     def getColors(self):
         return self.darkColors if self.darkMode else self.lightColors
         
-#Dynamic navigation bar using sqlite database values for easy navigation--------------------------------------------------------------------------------------
+    #Load subcategory icons
+    def loadSubcategoryIcon(self, sub_id, sub_name):
+        """Load icon for a subcategory or return a default"""
+        if sub_id in self.subcategory_icons:
+            return self.subcategory_icons[sub_id]
+        
+        try:
+            #Try to load a specific icon for this subcategory
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            icon_filename = f"icon_{sub_id}.png"  #Assuming icons are named like icon_1.png, icon_2.png, etc.
+            icon_path = os.path.join(script_dir, "icons", icon_filename)
+            
+            if os.path.exists(icon_path):
+                img = Image.open(icon_path).resize((50, 50))
+                photo = ImageTk.PhotoImage(img)
+                self.subcategory_icons[sub_id] = photo
+                return photo
+        except:
+            pass
+        
+        #Return None if icon couldn't be loaded
+        return None
+
+#Dynamic navigation bar using sqlite database values for easy navigation --------------------------------------------------------------------------------------
     def createDynamicNav(self):
         colors = self.getColors()
         #Creating the dynamic navigation bar
         try: 
             #Creating the home logo next to the explore page for easy navigation
-            homeLogo = Image.open(os.path.join(os.path.dirname(__file__), "homeLogo.png")).resize((50, 50)) #Sizing home page
-            self.homeLogo = ImageTk.PhotoImage(homeLogo) #Using Tkinter image
+            homeLogo = Image.open(os.path.join(os.path.dirname(__file__), "homeLogo.png")).resize((50, 50))  #Sizing home page
+            self.homeLogo = ImageTk.PhotoImage(homeLogo)  #Using Tkinter image
             homeButton = tk.Button(self.navBar, image=self.homeLogo, bg=colors["nav"], bd=0, cursor="hand2", 
                               command=lambda: [self.updateInstructions("Welcome Home! Select a category to start."), self.resultsContainer.pack_forget(), self.mainPageFrame.place(relx=0.5, rely=0.5, anchor="center")]
                               )
-            homeButton.pack(side="left", padx=(0, 10)) #Home button to direct user back to home page when necessary
+            homeButton.pack(side="left", padx=(0, 10))  #Home button to direct user back to home page when necessary
             #Adding hover instruction for home
             homeButton.bind("<Enter>", lambda e: self.updateInstructions("Click to return to the main dashboard."))
             self.home_button = homeButton  #Storing reference for theme updates
         except:
             messagebox.showwarning("Error", f"Could not load home logo")
+        
         #Creating dynamic menubar dropdowns that sorts businesses by category name
-        self.mb = tk.Menubutton( #Creating the menubutton for the Explore
+        self.mb = tk.Menubutton(  #Creating the menubutton for the Explore
             self.navBar, text="Explore ⏷", 
-            bg=colors["button"],fg=colors["buttonText"], 
+            bg=colors["button"], fg=colors["buttonText"], 
             font=("Georgia", 12), width=20, 
             direction='below', relief='flat', cursor="hand2")
-        self.mb.pack(side="left", padx=(0,10))
-#Sorting businesses by category------------------------------------------------------------------------------------------------------------------------
+        self.mb.pack(side="left", padx=(0, 10))
+        
         #On click of explore, the button calls the function displayBusinesses and shows all businesses
-        self.mb.bind("<Button-1>", lambda e: self.displayBusinesses(1, 'Explore',0))
-        # Add hover instruction for Explore
+        self.mb.bind("<Button-1>", lambda e: self.displayBusinesses(1, 'Explore', 0))
+        #Add hover instruction for Explore
         self.mb.bind("<Enter>", lambda e: self.updateInstructions("Browse businesses by category or location."))
 
         mainMenu = tk.Menu(
@@ -180,14 +216,15 @@ class StartScreen:
             for sub_id, sub_name in subcategories:
                 subCatMenu.add_command(
                     label=sub_name,
-                    command=lambda sId=sub_id, sName=sub_name: self.displayBusinesses(sId, sName,0) 
+                    command=lambda sId=sub_id, sName=sub_name: self.displayBusinesses(sId, sName, 0) 
                 )
             mainMenu.add_cascade(label=cat_name, menu=subCatMenu)
+        
         #Displaying sign up and login button when user has not signed in
         if not self.userEmail:
             #Guest exit Page Buttons
-            self.guestExPgButtons(self.navBar, "Sign Up", colors["button"], command = self.openSignUp)
-            self.guestExPgButtons(self.navBar, "Login", colors["button"], command = self.openLogin)
+            self.guestExPgButtons(self.navBar, "Sign Up", colors["button"], command=self.openSignUp)
+            self.guestExPgButtons(self.navBar, "Login", colors["button"], command=self.openLogin)
         
         else:
             #Creating buttons in the top navigation bar that are available only when user signs in
@@ -195,26 +232,25 @@ class StartScreen:
             self.coupsNDeals = tk.Button(self.navBar, text="Coupons and Deals", 
                                         bg=colors["button"], fg=colors["buttonText"], font=("Georgia", 12), 
                                         width=20, relief='flat', cursor="hand2")
-            self.coupsNDeals.config(command=self.showAllCouponsPage) #Shows all coupons
-            self.coupsNDeals.pack(side="left", padx=(0,10))
+            self.coupsNDeals.config(command=self.showAllCouponsPage)  #Shows all coupons
+            self.coupsNDeals.pack(side="left", padx=(0, 10))
             self.coupsNDeals.bind("<Enter>", lambda e: self.updateInstructions("View exclusive local discounts and promo codes."))
                         
             #Handling bookmarks with the buttons
             self.bookmarks = tk.Button(self.navBar, text="Bookmarks",
                                       bg=colors["button"], fg=colors["buttonText"], font=("Georgia", 12), 
                                       width=20, relief='flat', cursor="hand2",
-                                      command=lambda: self.displayBusinesses(-1, "Bookmarks",0))
-            self.bookmarks.pack(side="left", padx=(0,10))
+                                      command=lambda: self.displayBusinesses(-1, "Bookmarks", 0))
+            self.bookmarks.pack(side="left", padx=(0, 10))
             self.bookmarks.bind("<Enter>", lambda e: self.updateInstructions("View businesses you have saved to your favorites."))
             
             #Interactive Q&A Button
             self.helpBtn = tk.Button(self.navBar, text="Help",
                                      bg=colors["button"], fg=colors["buttonText"], font=("Georgia", 12), 
                                      width=20, relief='flat', cursor="hand2", 
-                                     command=self.showQA) # Pointing to new function
-            self.helpBtn.pack(side="left", padx=(0,10))
+                                     command=self.showQA)  #Pointing to new function
+            self.helpBtn.pack(side="left", padx=(0, 10))
             self.helpBtn.bind("<Enter>", lambda e: self.updateInstructions("Have a question? Visit our interactive Q&A support."))
-
             
             #Dark mode toggle button
             self.darkBtn = tk.Button(
@@ -253,7 +289,7 @@ class StartScreen:
         self.mainPageFrame.place_forget()
         #Clears the result container to display this page
         for widget in self.resultsContainer.winfo_children():
-            widget.destroy()  
+            widget.destroy()
         #Packs the container
         self.resultsContainer.pack(fill="both", expand=True)
         #Apply theme to results container
@@ -269,22 +305,24 @@ class StartScreen:
                         bg=color, fg=colors["buttonText"], width=15, pady=8,
                         bd=0, command=command, cursor="hand2")
         btn.pack(side="right", padx=10)
-        #Storing reference for theme updates
-        if (text == "Sign Up"):
+        #Store reference for theme updates
+        if text == "Sign Up":
             self.signup_btn = btn
         else:
             self.login_btn = btn
-        #Updating instructions on hover for guest buttons
-        if (text == "Sign Up"):
+        #Update instructions on hover for guest buttons
+        if text == "Sign Up":
             btn.bind("<Enter>", lambda e: self.updateInstructions("Join PIBBIT to bookmark businesses and get coupons!"))
         else:
             btn.bind("<Enter>", lambda e: self.updateInstructions("Log in to access your saved businesses and deals."))
 
-#Rating and Reviews------------------------------------------------------------------------------------------------------------------------------
+#Rating and Reviews ------------------------------------------------------------------------------------------------------------------------------
     def openRatingPopup(self, biz_id, biz_name):
-        RatingPopup(self.root, self.db, biz_id, biz_name, self.displayBusinesses)
+        RatingPopup(self.root, self.db, biz_id, biz_name, None)
+    
     def openReviewPopup(self, root, db, biz_id, biz_name):
         ReviewPopup(self.root, self.db, biz_id, biz_name, self.userEmail)
+    
     def fetchCategories(self):
         return self.db.fetchCategories()
 
@@ -300,14 +338,15 @@ class StartScreen:
     def fetchAllBusinesses(self):
         return self.db.fetchAllBusinesses()
 
-#Sorting ratings and reviews---------------------------------------------------------------------------------------------------------------------
+#Sorting ratings and reviews ---------------------------------------------------------------------------------------------------------------------
     def sortByRatings(self, businesses):
         self.updateInstructions("Sorting by user ratings: Showing top-rated businesses first.")
         #Sorting ratings by order- highest rating first and lowest rating last
-        if not businesses: return
+        if not businesses: 
+            return
         sortingBizes = sorted(
             businesses,
-            key=lambda b: (float(b[2]) if b[2] not in (None, "", "N/A") else 0.0), #Sorts list by using lambda- rating is 2nd index
+            key=lambda b: (float(b[2]) if b[2] not in (None, "", "N/A") else 0.0),  #Sorts list by using lambda- rating is 2nd index
             reverse=True
         )
         self.renderBusinessCards(sortingBizes)
@@ -315,15 +354,80 @@ class StartScreen:
     def sortByReviews(self, businesses):
         self.updateInstructions("Sorting by review count: Showing the most discussed businesses.")
         #Sorts businesses by review count- highest first to lowest last
-        if not businesses: return
+        if not businesses: 
+            return
         sortingBizes = sorted(
             businesses,
-            key=lambda b: (int(b[3]) if b[3] else 0), #Using b(3) as review is 3rd index of the list in the query of the db
-            reverse=True #Using reverse to counter the default lowest to highest order- reverse helps to make it highest to lowest
+            key=lambda b: (int(b[3]) if b[3] else 0),  #Using b(3) as review is 3rd index of the list in the query of the db
+            reverse=True  #Using reverse to counter the default lowest to highest order- reverse helps to make it highest to lowest
         )
         self.renderBusinessCards(sortingBizes)
+    
+    #Recommendation engine
+    def getRecommendedBusinesses(self, businesses):
+        #Must be logged in
+        if not self.userEmail:
+            return []
+        #Fetch which subcategories the user reviewed
+        reviewedSubs = self.db.fetchUserReviewedCategories(self.userEmail)
+        #If DB returns None or empty → no recommendations
+        if not reviewedSubs:
+            return []
 
-#Bookmarks-----------------------------------------------------------------------------------------------------------------------------------------
+        #FAVORITE subcategory (most reviewed)
+        favSub = Counter(reviewedSubs).most_common(1)[0][0]
+
+        scoredBusinesses = []
+
+        for b in businesses:
+
+            #SAFE UNPACKING with size check
+            if len(b) < 6:
+                continue
+
+            biz_id, name, rating, reviews, desc, link = b
+
+            #Convert to safe numeric values
+            rating = float(rating) if rating else 0.0
+            reviews = int(reviews) if reviews else 0
+
+            #Get subcategory for this business
+            sub_id = self.db.getBusinessSubId(biz_id)
+            print(f"Business {biz_id} subcategory:", sub_id)
+
+            #If DB fails, skip safely
+            if sub_id is None:
+                continue
+
+            #Category/subcategory match bonus
+            category_match = 1 if str(sub_id) == str(favSub) else 0
+
+            #Bonus if user bookmarked it
+            bookmark_bonus = 1 if self.db.isBookmarked(self.userEmail, biz_id) else 0
+
+            #Final score
+            score = (
+                category_match * 5 +
+                rating * 2 +
+                math.log(reviews + 1) +
+                bookmark_bonus
+            )
+
+            print(f"Score for {name}:", score)
+
+            scoredBusinesses.append((score, b))
+
+        scoredBusinesses.sort(reverse=True, key=lambda x: x[0])
+
+        #Take top 5
+        recommended = [biz for score, biz in scoredBusinesses[:5]]
+
+        print("Final recommended list:", recommended)
+        print("--- End Debug ---\n")
+
+        return recommended
+        
+#Bookmarks -----------------------------------------------------------------------------------------------------------------------------------------
     
     def onBookmarkToggle(self, biz_id, button):
         colors = self.getColors()
@@ -337,7 +441,7 @@ class StartScreen:
 
     #Displays businesses on the resultsContainer frame with scrollbar frame
     def displayBusinesses(self, sub_id, sub_name, city_id):
-        #Storing current view parameters for theme refresh
+        #Store current view parameters for theme refresh
         self.current_sub_id = sub_id
         self.current_sub_name = sub_name
         self.current_city_id = city_id
@@ -346,7 +450,8 @@ class StartScreen:
         colors = self.getColors()
         self.updateInstructions(f"Viewing {sub_name if sub_name != 0 else 'Selected City'}. Click 'Website Link' to visit them.")
         self.mainPageFrame.place_forget()
-        #Destroys container before displaying new information
+        
+        #Destroy container before displaying new information
         for widget in self.resultsContainer.winfo_children():
             widget.destroy()
             
@@ -355,7 +460,7 @@ class StartScreen:
         self.resultsContainer.configure(bg=colors["bg"])
         
         #Creates the canvas that holds scrolling bar
-        resultsContCanvas = tk.Canvas(self.resultsContainer, bg=colors["bg"], highlightthickness=0) #Results Containter Canvas
+        resultsContCanvas = tk.Canvas(self.resultsContainer, bg=colors["bg"], highlightthickness=0)  #Results Container Canvas
         scrollbar = tk.Scrollbar(self.resultsContainer, orient="vertical", command=resultsContCanvas.yview)
         self.scrollingFrame = tk.Frame(resultsContCanvas, bg=colors["bg"])
         self.scrollingFrame.bind("<Configure>", lambda e: resultsContCanvas.configure(scrollregion=resultsContCanvas.bbox("all")))
@@ -370,28 +475,65 @@ class StartScreen:
         scrollbar.pack(side="right", fill="y")
         resultsContCanvas.pack(side="left", fill="both", expand=True)
 
-        # Container for sorting buttons and title
+        #Container for sorting buttons and title
         top_bar = tk.Frame(self.scrollingFrame, bg=colors["bg"])
         top_bar.pack(fill="x", pady=10, padx=50)
 
         #If explore is clicked, it displays all the businesses
         if sub_id == 1:
             tk.Label(top_bar, text="All Businesses:", 
-                  font=("Georgia", 20, "bold"), bg=colors["bg"], fg=colors["text"]).pack(side="left")
+                  font=("Segoe Print", 20, "bold"), bg=colors["bg"], fg=colors["text"]).pack(side="left")
             businesses = self.fetchAllBusinesses()
         elif sub_id == -1:
-            # Displays businesses that the user has saved
+            #Displays businesses that the user has saved
             tk.Label(top_bar, text="Your Bookmarked Businesses:", 
-                  font=("Georgia", 20, "bold"), bg=colors["bg"], fg=colors["text"]).pack(side="left")
+                  font=("Segoe Print", 20, "bold"), bg=colors["bg"], fg=colors["text"]).pack(side="left")
             businesses = self.db.fetchBookmarkedBusinesses(self.userEmail)
         elif sub_id == 0 and city_id != 0:
             tk.Label(top_bar, text=f"Businesses in Selected City:", 
-                  font=("Georgia", 20, "bold"), bg=colors["bg"], fg=colors["text"]).pack(side="left")
+                  font=("Segoe Print", 20, "bold"), bg=colors["bg"], fg=colors["text"]).pack(side="left")
             businesses = self.db.fetchBusinessByCity(city_id)
         else:
             tk.Label(top_bar, text=f"Results for {sub_name}:", 
-                  font=("Georgia", 20, "bold"), bg=colors["bg"], fg=colors["text"]).pack(side="left")
+                  font=("Segoe Print", 20, "bold"), bg=colors["bg"], fg=colors["text"]).pack(side="left")
             businesses = self.fetchBusinessesBySubs(sub_id) 
+
+        #Temporary frame reference
+        self.cardsFrame = tk.Frame(self.scrollingFrame)
+
+        #Get personalized recommendations
+        all_biz = self.fetchAllBusinesses()
+        recommended = self.getRecommendedBusinesses(all_biz)
+
+        #Remove recommended from main list to avoid duplicates
+        recommended_ids = {b[0] for b in recommended}
+        businesses = [b for b in businesses if b[0] not in recommended_ids]
+
+        #Show recommended section first
+        if recommended:
+            tk.Label(self.scrollingFrame,
+                text="✨ Recommended For You",
+                font=("Segoe Print", 22, "bold"),
+                bg=colors["bg"],
+                fg=colors["recommended"]
+            ).pack(anchor="w", padx=50, pady=(20, 10))
+
+            recommendedFrame = tk.Frame(self.scrollingFrame, bg=colors["bg"])
+            recommendedFrame.pack(fill="x", padx=40)
+
+            self.cardsFrame = recommendedFrame
+            self.renderBusinessCards(recommended)
+
+            #Separate recommended from businesses
+            tk.Label(self.scrollingFrame,
+            text="All Businesses",
+            font=("Segoe Print", 18, "bold"),
+            bg=colors["bg"],
+            fg=colors["text"]).pack(anchor="w", padx=50, pady=(30, 10))
+
+        #Container where cards will actually be drawn
+        self.cardsFrame = tk.Frame(self.scrollingFrame, bg=colors["bg"])
+        self.cardsFrame.pack(fill="both", expand=True)
 
         #Sorting Buttons
         sortingBtnFrame = tk.Frame(top_bar, bg=colors["bg"])
@@ -401,7 +543,7 @@ class StartScreen:
                                bg=colors["button"], fg=colors["buttonText"], font=("Georgia", 10), 
                                width=15, relief="flat")
         self.city_mb.pack(side="left", padx=5)
-        self.city_mb.bind("<Enter>", lambda e: self.updateInstructions("Filter results by specific Georgia communities."))
+        self.city_mb.bind("<Enter>", lambda e: self.updateInstructions("Filter results by specific Segoe Print communities."))
 
         #Creating the empty Menu object
         self.citySelectDrpMenu = tk.Menu(self.city_mb, tearoff=0, bg=colors["button"], fg=colors["buttonText"])
@@ -419,17 +561,15 @@ class StartScreen:
                   command=lambda: self.sortByReviews(businesses)).pack(side="left", padx=5)
         
         print_btn = tk.Button(sortingBtnFrame, text="🖨️", bg=colors["bg"], fg=colors["text"], 
-                  font=("Georgia", 15), width=4, relief="flat", cursor="hand2",
-                  command= lambda: self.printBusinesses(businesses, sub_name))
-        print_btn.pack(side="left", padx = 2)
+                  font=("georgia", 15), width=4, relief="flat", cursor="hand2",
+                  command=lambda: self.printBusinesses(businesses, sub_name))
+        print_btn.pack(side="left", padx=2)
         print_btn.bind("<Enter>", lambda e: self.updateInstructions("Generate and export a professional PDF report of these businesses."))
-
-        #Container where cards will actually be drawn
-        self.cardsFrame = tk.Frame(self.scrollingFrame, bg=colors["bg"])
-        self.cardsFrame.pack(fill="both", expand=True)
+        
+        print("Recommended:", recommended)
         self.renderBusinessCards(businesses)
         
-#Selection of communities-------------------------------------------------------------------------------------------------------------------------------------
+#Selection of communities -------------------------------------------------------------------------------------------------------------------------------------
     def displayCities(self):
         colors = self.getColors()
         self.citySelectDrpMenu.delete(0, 'end')
@@ -438,15 +578,15 @@ class StartScreen:
         if not cities:
             self.citySelectDrpMenu.add_command(label="No cities found", state="disabled")
             return
-        #Al all cities option
+        #All cities option
         self.citySelectDrpMenu.add_command(label="All Cities", command=lambda: self.displayBusinesses(1, "Explore", 0))
         self.citySelectDrpMenu.add_separator()
         for city_id, city_name in cities:
             self.citySelectDrpMenu.add_command(
-            label=city_name,
-            #Using default arguments in lambda (c_id=city_id) to avoid the "closure" bug
-            command=lambda c_id=city_id, c_name=city_name: self.displayBusinesses(0,0, c_id)
-        )
+                label=city_name,
+                #Using default arguments in lambda (c_id=city_id) to avoid the "closure" bug
+                command=lambda c_id=city_id, c_name=city_name: self.displayBusinesses(0, 0, c_id)
+            )
             
     def renderBusinessCards(self, businesses):
         colors = self.getColors()
@@ -454,73 +594,116 @@ class StartScreen:
         #Clearing existing cards first
         for widget in self.cardsFrame.winfo_children():
             widget.destroy()
+        
         if not businesses:
             tk.Label(self.cardsFrame, text="No businesses found.", bg=colors["bg"], fg=colors["text"], font=("Georgia", 12)).pack(pady=20)
             return
+        
         for biz_id, biz_name, rating, review_count, description, website_link in businesses:
             if any(field is None for field in [biz_name, description, website_link]):
                 continue
 
-            bizCard = tk.Frame(
+            #Get subcategory ID for this business to load appropriate icon
+            sub_id = self.db.getBusinessSubId(biz_id)
+            
+            #Create main card frame using CTkFrame for rounded corners
+            bizCard = ctk.CTkFrame(
                 self.cardsFrame,
-                bg=colors["card"],
-                highlightbackground=colors["highlight"],
-                highlightthickness=2,
-                padx=15,
-                pady=10
+                corner_radius=20,  #This makes it round!
+                fg_color=colors["card"],
+                border_color=colors["highlight"],
+                border_width=2,
+                height=180  #Fixed height for consistency
             )
-            bizCard.pack(fill="x", pady=10, padx=50)  
-                     
-            tk.Label(bizCard, text=biz_name,
-                    font=("Georgia", 18, "bold"),
+            bizCard.pack(fill="x", pady=10, padx=50)
+            bizCard.pack_propagate(False)  #Prevent shrinking
+            
+            #Create a regular tkinter Frame inside for content
+            #(CTkFrame doesn't play well with pack_propagate for nested widgets)
+            content_container = tk.Frame(bizCard, bg=colors["card"])
+            content_container.pack(fill="both", expand=True, padx=10, pady=10)
+            
+            #Create a horizontal layout with icon frame on the left and content on the right
+            cardInnerFrame = tk.Frame(content_container, bg=colors["card"])
+            cardInnerFrame.pack(fill="both", expand=True)
+            
+            #Left side - Icon frame
+            iconFrame = tk.Frame(cardInnerFrame, bg=colors["card"], width=80, height=80)
+            iconFrame.pack(side="left", padx=(5, 10), pady=5)
+            iconFrame.pack_propagate(False)
+            
+            #Try to load and display icon
+            icon = self.loadSubcategoryIcon(sub_id, biz_name)
+            if icon:
+                icon_label = tk.Label(iconFrame, image=icon, bg=colors["card"])
+                icon_label.image = icon
+                icon_label.pack(expand=True)
+            else:
+                placeholder = tk.Label(iconFrame, text="🏢", font=("Arial", 30), bg=colors["card"], fg=colors["accent"])
+                placeholder.pack(expand=True)
+            
+            #Right side - Content frame
+            contentFrame = tk.Frame(cardInnerFrame, bg=colors["card"])
+            contentFrame.pack(side="left", fill="both", expand=True, padx=(0, 10))
+            
+            #Business name
+            tk.Label(contentFrame, text=biz_name,
+                    font=("Segoe Print", 18, "bold"),
                     bg=colors["card"],
                     fg=colors["cardText"]).pack(anchor="w")
+            
+            #Rating stars
             rateValue = float(rating) if rating else 0.0
             stars = "★" * int(rateValue) + "☆" * (5 - int(rateValue))
-            tk.Label(bizCard, text=f"{stars} {rateValue} ({review_count or 0} reviews)", 
-                     font=("Georgia", 12), bg=colors["card"], fg=colors["ratingStars"]).pack(anchor="w")
-            tk.Label(bizCard, text=f"{description}", font=("Georgia", 10), bg=colors["card"], fg=colors["cardText"],
-                     wraplength=800, justify="left").pack(anchor='w', pady=5)
+            tk.Label(contentFrame, text=f"{stars} {rateValue} ({review_count or 0} reviews)", 
+                    font=("Segoe Print", 12), bg=colors["card"], fg=colors["ratingStars"]).pack(anchor="w")
+            
+            #Description
+            tk.Label(contentFrame, text=f"{description}", font=("Segoe Print", 10), bg=colors["card"], fg=colors["cardText"],
+                    wraplength=700, justify="left").pack(anchor='w', pady=5)
             
             #Action Buttons Container
-            actBtnCont = tk.Frame(bizCard, bg=colors["card"])
-            actBtnCont.pack(fill="x", side="bottom")
+            actBtnCont = tk.Frame(contentFrame, bg=colors["card"])
+            actBtnCont.pack(fill="x", side="bottom", pady=(5, 0))
 
+            #Website button (keeping as tkinter button)
             tk.Button(actBtnCont, text="Website Link", bg="#D16459", fg=colors["buttonText"], 
-                     relief="flat", padx=10, cursor="hand2",
-                      command=lambda link=website_link: self.openWebsite(link)).pack(side="right", padx=5)
+                    relief="flat", padx=10, cursor="hand2",
+                    command=lambda link=website_link: self.openWebsite(link)).pack(side="right", padx=5)
 
             if self.userEmail:
                 bmSaved = self.db.isBookmarked(self.userEmail, biz_id)
                 bmTxt = "🔖 Bookmarked" if bmSaved else "☆ Bookmark"
                 bmColor = colors["bookmarkAdded"] if bmSaved else colors["bookmarkRemove"]
                 
-                bmBtn = tk.Button(bizCard, text=bmTxt, bg=bmColor, fg=colors["buttonText"], 
-                                 relief="flat", padx=10, cursor="hand2")
+                #Bookmark button (keeping as tkinter button for now)
+                bmBtn = tk.Button(contentFrame, text=bmTxt, bg=bmColor, fg=colors["buttonText"], 
+                                relief="flat", padx=10, cursor="hand2")
                 bmBtn.config(command=lambda b=biz_id, btn=bmBtn: self.onBookmarkToggle(b, btn))
                 bmBtn.place(relx=1.0, rely=0.0, x=-10, y=10, anchor="ne")
 
+                #Rate and review buttons
                 tk.Button(actBtnCont, text="Rate Business", bg=colors["button"], fg=colors["buttonText"], 
-                         relief="flat", padx=10, cursor="hand2",
-                          command=lambda b_id=biz_id, b_name=biz_name: self.openRatingPopup(b_id, b_name)).pack(side="right", padx=(10,0))
+                        relief="flat", padx=10, cursor="hand2",
+                        command=lambda b_id=biz_id, b_name=biz_name: self.openRatingPopup(b_id, b_name)).pack(side="right", padx=(10, 0))
+                
                 tk.Button(actBtnCont, text="Write a Review", bg=colors["button"], fg=colors["buttonText"], 
-                         relief="flat", padx=10, cursor="hand2", 
-                         command=lambda b_id=biz_id, b_name=biz_name:
+                        relief="flat", padx=10, cursor="hand2", 
+                        command=lambda b_id=biz_id, b_name=biz_name:
                         self.openReviewPopup(self.root, self.db, b_id, b_name)).pack(side="right", padx=(10, 0))
                 
-                #Button only shows when coupons are available
+                #Coupons button
                 active_coups = self.db.fetchCouponsByBusiness(biz_id)
                 if active_coups:
                     tk.Button(actBtnCont, text="View Coupons", bg=colors["button"], fg=colors["buttonText"], 
-                             relief="flat", padx=10, cursor="hand2",
-                              command=lambda b_id=biz_id, b_name=biz_name: self.showBusinessCoupons(b_id, b_name)).pack(side="right", padx=(10, 0))
-
+                            relief="flat", padx=10, cursor="hand2",
+                            command=lambda b_id=biz_id, b_name=biz_name: self.showBusinessCoupons(b_id, b_name)).pack(side="right", padx=(10, 0))
     #Function that creates the homepage when program is runs
     def homeUi(self):
         """Creates the homepage when program runs"""
         colors = self.getColors()
         
-        # If mainPageFrame already exists, destroy it and create a new one
+        #If mainPageFrame already exists, destroy it and create a new one
         if hasattr(self, 'mainPageFrame'):
             try:
                 self.mainPageFrame.destroy()
@@ -541,24 +724,24 @@ class StartScreen:
         except:
             tk.Label(self.mainPageFrame, text="[Logo Error]", 
                     bg=colors["bg"], fg=colors["text"], 
-                    font=("Georgia", 20)).grid(row=0, column=0)
+                    font=("Segoe Print", 20)).grid(row=0, column=0)
         
         #Pibbit title and slogan
         tk.Label(self.mainPageFrame, text="PIBBIT", 
-                font=("Georgia", 100, "bold"),
+                font=("Segoe Print", 100, "bold"),
                 fg=colors["text"], bg=colors["bg"]).grid(row=0, column=1, sticky="w")
         
-        # Slogan with special color handling
+        #Slogan with special color handling
         slogan_color = "#6E2F20" if not self.darkMode else "#FFA07A"
         tk.Label(self.mainPageFrame, 
                 text="Local business now becomes just a PIBBIT away",
                 font=("Georgia", 25), fg=slogan_color, 
                 bg=colors["bg"]).grid(row=1, column=1, sticky="w")
 
-#Generating Costumizable Report-----------------------------------------------------------------------------------------------------------------------
+#Generating Customizable Report -----------------------------------------------------------------------------------------------------------------------
     def printBusinesses(self, businesses, catName):
         self.updateInstructions("Preparing PDF report... Please wait.")
-        #Generates presentatble report and prevents the report from printing businesses that aren't complete yet
+        #Generates presentable report and prevents the report from printing businesses that aren't complete yet
         #Filtering input data by using list comprehension. if business is null then it removes it
         #We learned about Reportlab and how to effectively use it with-->
         #https://www.blog.pythonlibrary.org/2021/09/15/getting-started-with-reportlabs-canvas/
@@ -575,47 +758,48 @@ class StartScreen:
         try:
             printCanv = canvas.Canvas(fileName, pagesize=letter)
             width, height = letter
-            #managing the y-coordinate
-            y = height - 1*inch 
+            #Managing the y-coordinate
+            y = height - 1 * inch 
 
             #Header
             printCanv.setFont("Helvetica-Bold", 20)
-            printCanv.drawString(1*inch, y, "PIBBIT Business Report")
-            y -= 0.3*inch
+            printCanv.drawString(1 * inch, y, "PIBBIT Business Report")
+            y -= 0.3 * inch
             printCanv.setFont("Helvetica", 12)
-            printCanv.drawString(1*inch, y, f"Category: {catName}")
-            y -= 0.5*inch
-            printCanv.line(1*inch, y + 0.1*inch, 7.5*inch, y + 0.1*inch)
+            printCanv.drawString(1 * inch, y, f"Category: {catName}")
+            y -= 0.5 * inch
+            printCanv.line(1 * inch, y + 0.1 * inch, 7.5 * inch, y + 0.1 * inch)
 
             for biz in filterInData:
-                if y < 1.5*inch: #Makes sure that when the businesses reach the bottom of the page, it automatically creates a new page to reset y to the top
+                if y < 1.5 * inch:  #Makes sure that when the businesses reach the bottom of the page, it automatically creates a new page to reset y to the top
                     printCanv.showPage()
-                    y = height - 1*inch
+                    y = height - 1 * inch
 
                 #Unpacks the tuples easily and directly
                 _, name, rating, reviews, desc, link = biz
                 
                 #Businesses attributes directly to the pdf
                 printCanv.setFont("Helvetica-Bold", 14)
-                printCanv.drawString(1*inch, y, str(name))
-                y -= 0.2*inch
+                printCanv.drawString(1 * inch, y, str(name))
+                y -= 0.2 * inch
                 
                 printCanv.setFont("Helvetica", 10)
-                printCanv.drawString(1*inch, y, f"Rating: {rating or 0} | Reviews: {reviews or 0}")
-                y -= 0.2*inch
+                printCanv.drawString(1 * inch, y, f"Rating: {rating or 0} | Reviews: {reviews or 0}")
+                y -= 0.2 * inch
                 
                 printCanv.setFont("Helvetica-Oblique", 10)
                 description = str(desc)
-                if len(description) > 90: description = description[:87] + "..."
-                printCanv.drawString(1*inch, y, description)
-                y -= 0.2*inch
+                if len(description) > 90: 
+                    description = description[:87] + "..."
+                printCanv.drawString(1 * inch, y, description)
+                y -= 0.2 * inch
                 
                 printCanv.setFont("Helvetica", 10)
                 printCanv.setFillColorRGB(0, 0, 1) 
-                printCanv.drawString(1*inch, y, f"Website: {link}")
+                printCanv.drawString(1 * inch, y, f"Website: {link}")
                 printCanv.setFillColorRGB(0, 0, 0) 
                 
-                y -= 0.4*inch 
+                y -= 0.4 * inch 
 
             printCanv.save()
             
@@ -626,40 +810,40 @@ class StartScreen:
         except Exception as e:
             messagebox.showerror("Error", f"Could not generate PDF: {e}")
             
-#Coupons and Deals--------------------------------------------------------------------------------------------------------------------------------
+#Coupons and Deals --------------------------------------------------------------------------------------------------------------------------------
     def showBusinessCoupons(self, biz_id, biz_name):
         colors = self.getColors()
         self.updateInstructions(f"Viewing deals for {biz_name}. Use the codes at checkout!")
-        # Create a small popup window
+        #Create a small popup window
         popup = tk.Toplevel(self.root)
         popup.title(f"Deals for {biz_name}")
         popup.geometry("500x400")
         popup.configure(bg=colors["card"])
 
         tk.Label(popup, text=f"Coupons for {biz_name}", 
-                font=("Georgia", 14, "bold"), bg=colors["card"], fg=colors["cardText"], pady=10).pack()
+                font=("Segoe Print", 14, "bold"), bg=colors["card"], fg=colors["cardText"], pady=10).pack()
 
         #Fetch specific coupons
         coupons = self.db.fetchCouponsByBusiness(biz_id)
 
         if not coupons:
             tk.Label(popup, text="No active coupons for this business.", 
-                    font=("Georgia", 11), bg=colors["card"], fg=colors["cardText"]).pack(pady=50)
+                    font=("Segoe Print", 11), bg=colors["card"], fg=colors["cardText"]).pack(pady=50)
         else:
             for title, description, coupon_code in coupons:
                 f = tk.Frame(popup, bg=colors["bg"] if self.darkMode else "white", 
                            relief="groove", bd=2, padx=10, pady=10)
                 f.pack(fill="x", padx=20, pady=5)
                 
-                tk.Label(f, text=title, font=("Georgia", 12, "bold"), 
+                tk.Label(f, text=title, font=("Segoe Print", 12, "bold"), 
                         bg=f.cget('bg'), fg=colors["accent"]).pack(anchor="w")
-                tk.Label(f, text=description, font=("Georgia", 10), 
+                tk.Label(f, text=description, font=("Segoe Print", 10), 
                         bg=f.cget('bg'), fg=colors["cardText"], wraplength=400).pack(anchor="w")
                 
-                # The actual code
-                codeLbl = tk.Label(f, text=f"CODE: {coupon_code}", font=("Courier", 12, "bold"), 
+                #The actual code
+                code_lbl = tk.Label(f, text=f"CODE: {coupon_code}", font=("Courier", 12, "bold"), 
                                     bg="#F0F0F0", fg="#6E2F20", padx=5)
-                codeLbl.pack(side="left", pady=5)
+                code_lbl.pack(side="left", pady=5)
                 
     def showAllCouponsPage(self):
         colors = self.getColors()
@@ -677,9 +861,9 @@ class StartScreen:
         #Setting up Canvas with Dynamic Width
         canvas = tk.Canvas(self.resultsContainer, bg=colors["bg"], highlightthickness=0)
         scrollbar = tk.Scrollbar(self.resultsContainer, orient="vertical", command=canvas.yview)
-        self.scrollingFrame = tk.Frame(canvas, bg=colors["bg"]) # Standardized name
+        self.scrollingFrame = tk.Frame(canvas, bg=colors["bg"])  #Standardized name
         
-        # This function ensures the frame expands to fill the canvas width
+        #This function ensures the frame expands to fill the canvas width
         def configure_canvas(e):
             canvas.itemconfig(
                 canvas.create_window((0, 0), window=self.scrollingFrame, anchor="nw"), 
@@ -693,13 +877,13 @@ class StartScreen:
         scrollbar.pack(side="right", fill="y")
         canvas.pack(side="left", fill="both", expand=True)
 
-        # 3. Standard Header
-        tk.Label(self.scrollingFrame, text="All Local Deals", font=("Georgia", 24, "bold"), 
+        #Standard Header
+        tk.Label(self.scrollingFrame, text="All Local Deals", font=("Segoe Print", 24, "bold"), 
                  bg=colors["bg"], fg=colors["text"], pady=20).pack()
 
         all_coupons = self.db.fetchAllCoupons()
 
-        #Rendering Cards using the same logic as displayBusinesses
+        #Render Cards using the same logic as displayBusinesses
         for biz_name, title, desc, code in all_coupons:
             #Consistent Card Frame
             card = tk.Frame(self.scrollingFrame, bg=colors["card"], 
@@ -710,13 +894,13 @@ class StartScreen:
             card.pack(fill="x", pady=10, padx=50)
 
             #Business Name
-            tk.Label(card, text=biz_name, font=("Georgia", 18, "bold"), 
+            tk.Label(card, text=biz_name, font=("Segoe Print", 18, "bold"), 
                     bg=colors["card"], fg=colors["cardText"]).pack(anchor="w")
             
             #Coupon Details
-            tk.Label(card, text=title, font=("Georgia", 14, "italic"), 
+            tk.Label(card, text=title, font=("Segoe Print", 14, "italic"), 
                     bg=colors["card"], fg=colors["accent"]).pack(anchor="w")
-            tk.Label(card, text=desc, font=("Georgia", 11), 
+            tk.Label(card, text=desc, font=("Segoe Print", 11), 
                     bg=colors["card"], fg=colors["cardText"], wraplength=800, justify="left").pack(anchor="w", pady=5)
             
             #Standardized Footer Area
@@ -724,8 +908,9 @@ class StartScreen:
             footer.pack(fill="x", pady=(10, 0))
             
             tk.Label(footer, text=f"CODE: {code}", font=("Courier", 14, "bold"), 
-                     bg="#F0F0F0", fg="#6E2F20", padx=8, pady=4).pack(side="left")                
-#Handling Captcha and bot safety after opening login and signup page--------------------------------------------------------------------------------------------------
+                     bg="#F0F0F0", fg="#6E2F20", padx=8, pady=4).pack(side="left")
+                     
+#Handling Captcha and bot safety after opening login and signup page --------------------------------------------------------------------------------------------------
     def openSignUp(self):
         self.root.destroy()
         from signup import SignUp
@@ -759,7 +944,7 @@ class StartScreen:
         #Update navigation buttons if they exist
         if hasattr(self, 'mb'):
             self.mb.configure(bg=colors["button"], fg=colors["buttonText"])
-            # Update the menu colors
+            #Update the menu colors
             if hasattr(self.mb, 'menu'):
                 self.mb.menu.configure(bg=colors["button"], fg=colors["buttonText"])
         
@@ -799,43 +984,67 @@ class StartScreen:
         #Footer
         self.footer.configure(bg=colors["footer"], fg="white")
 
-        
+        #This ensures it has the correct colors when we return to it
         self.homeUi()
         
+        #If main page is currently hidden, make sure it stays hidden
         if not self.mainPageFrame.winfo_ismapped():
             self.mainPageFrame.place_forget()
 
-        #Updates cards if they exist
+        #Update cards if they exist
         if hasattr(self, "cardsFrame"):
             self.cardsFrame.configure(bg=colors["bg"])
             for card in self.cardsFrame.winfo_children():
                 try:
                     card.configure(bg=colors["card"])
-                    #Updates labels inside cards
-                    for child in card.winfo_children():
-                        if (isinstance(child, tk.Label)):
-                            if ("★" in child.cget('text') or "☆" in child.cget('text')):
-                                child.configure(bg=colors["card"], fg=colors["ratingStars"])
-                            else:
-                                child.configure(bg=colors["card"], fg=colors["cardText"])
-                        if (isinstance(child, tk.Frame)):  # For action button container
-                            child.configure(bg=colors["card"])
-                            for btn in child.winfo_children():
-                                if isinstance(btn, tk.Button):
-                                    btn.configure(bg=colors["button"], fg=colors["buttonText"])
+                    #Update all children recursively
+                    self.update_widget_colors(card, colors)
                 except:
                     pass
 
-        # Update scrolling frame if it exists
+        #Update scrolling frame if it exists
         if hasattr(self, 'scrollingFrame'):
             self.scrollingFrame.configure(bg=colors["bg"])
             
-        # Update city menu if it exists
+        #Update city menu if it exists
         if hasattr(self, 'citySelectDrpMenu'):
             self.citySelectDrpMenu.configure(bg=colors["button"], fg=colors["buttonText"])
             
-        # Refresh current view to ensure all elements have correct theme
+        #Refresh current view to ensure all elements have correct theme
         self.refreshCurrentView()
+    
+    def update_widget_colors(self, widget, colors):
+        try:
+            if isinstance(widget, tk.Label):
+                if "★" in widget.cget('text') or "☆" in widget.cget('text'):
+                    widget.configure(bg=colors["card"], fg=colors["ratingStars"])
+                elif widget.cget('bg') in [self.lightColors["card"], self.darkColors["card"]]:
+                    widget.configure(bg=colors["card"], fg=colors["cardText"])
+            elif isinstance(widget, tk.Frame):
+                if widget.cget('bg') in [self.lightColors["card"], self.darkColors["card"]]:
+                    widget.configure(bg=colors["card"])
+                elif widget.cget('bg') in [self.lightColors["bg"], self.darkColors["bg"]]:
+                    widget.configure(bg=colors["bg"])
+            elif isinstance(widget, tk.Button):
+                if widget.cget('bg') in [self.lightColors["button"], self.darkColors["button"]]:
+                    widget.configure(bg=colors["button"], fg=colors["buttonText"])
+        except:
+            pass
+        
+        #Recursively update children
+        for child in widget.winfo_children():
+            self.update_widget_colors(child, colors)
+    
     def toggleDarkMode(self):
         self.darkMode = not self.darkMode
         self.applyTheme()
+    
+    def refreshCurrentView(self):
+        #Update CTk appearance mode first
+        ctk.set_appearance_mode("dark" if self.darkMode else "light")
+        
+        if self.current_view == 'businesses' and self.current_sub_id is not None:
+            self.displayBusinesses(self.current_sub_id, self.current_sub_name, self.current_city_id)
+        elif self.current_view == 'coupons':
+            self.showAllCouponsPage()
+    

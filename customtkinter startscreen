@@ -765,84 +765,41 @@ class StartScreen:
     def homeUi(self):
         """Creates the homepage when program runs"""
         colors = self.getColors()
-
+        
         # If mainPageFrame already exists, destroy it and create a new one
         if hasattr(self, 'mainPageFrame'):
             try:
                 self.mainPageFrame.destroy()
             except:
                 pass
-
-        # Make sure results container is hidden when showing home
-        self.resultsContainer.pack_forget()  # If using pack
-        # OR
-        # self.resultsContainer.grid_forget()  # If using grid (depending on your layout)
-
-        # Create main page frame with explicit size and proper placement
-        self.mainPageFrame = ctk.CTkFrame(
-            self.root, 
-            fg_color="transparent",
-            width=1000,  # Give it an explicit width
-            height=500   # Give it an explicit height
-        )
         
-        # Center it properly
+        self.mainPageFrame = tk.Frame(self.root, bg=colors["bg"])
         self.mainPageFrame.place(relx=0.5, rely=0.5, anchor="center")
         
-        # Ensure the frame expands to fit content
-        self.mainPageFrame.grid_propagate(True)
-        self.mainPageFrame.pack_propagate(False)  # Prevent shrinking
-
         try:
             script_dir = os.path.dirname(os.path.abspath(__file__))
             imgPath = os.path.join(script_dir, "logo.png")
             img = Image.open(imgPath).resize((500, 320))
-            self.logo_image = ctk.CTkImage(light_image=img, dark_image=img, size=(500, 320))
-            logoLabel = ctk.CTkLabel(
-                self.mainPageFrame,
-                image=self.logo_image,
-                text="",
-                fg_color="transparent"
-            )
-            logoLabel.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
-        except Exception as e:
-            print(f"Logo error: {e}")
-            logoLabel = ctk.CTkLabel(
-                self.mainPageFrame,
-                text="[Logo Error]",
-                font=("Georgia", 20),
-                text_color=colors["text"],
-                fg_color="transparent"
-            )
-            logoLabel.grid(row=0, column=0, padx=10, pady=10)
-
-        # Pibbit title
-        title_label = ctk.CTkLabel(
-            self.mainPageFrame,
-            text="PIBBIT",
-            font=("Georgia", 100, "bold"),
-            text_color=colors["text"],
-            fg_color="transparent"
-        )
-        title_label.grid(row=0, column=1, sticky="w", padx=10, pady=10)
-
+            photo = ImageTk.PhotoImage(img)
+            logoLabel = ctk.CTkTextbox(self.mainPageFrame, image=photo, bg=colors["bg"], bd=0)
+            logoLabel.image = photo 
+            logoLabel.grid(row=0, column=0, padx=0)
+        except:
+            ctk.CTkTextbox(self.mainPageFrame, text="[Logo Error]", 
+                    bg=colors["bg"], fg=colors["text"], 
+                    font=("Segoe Print", 20)).grid(row=0, column=0)
+        
+        # Pibbit title and slogan
+        ctk.CTkTextbox(self.mainPageFrame, text="PIBBIT", 
+                font=("Segoe Print", 100, "bold"),
+                fg=colors["text"], bg=colors["bg"]).grid(row=0, column=1, sticky="w")
+        
         # Slogan with special color handling
         slogan_color = "#6E2F20" if not self.darkMode else "#FFA07A"
-        slogan_label = ctk.CTkLabel(
-            self.mainPageFrame,
-            text="Local business now becomes just a PIBBIT away",
-            font=("Georgia", 25),
-            text_color=slogan_color,
-            fg_color="transparent",
-            wraplength=600  # Prevent text from going off-screen
-        )
-        slogan_label.grid(row=1, column=1, sticky="w", padx=10, pady=10)
-        
-        # Configure grid weights to ensure proper expansion
-        self.mainPageFrame.grid_columnconfigure(0, weight=1)
-        self.mainPageFrame.grid_columnconfigure(1, weight=2)
-        self.mainPageFrame.grid_rowconfigure(0, weight=1)
-        self.mainPageFrame.grid_rowconfigure(1, weight=1)
+        ctk.CTkTextbox(self.mainPageFrame, 
+                text="Local business now becomes just a PIBBIT away",
+                font=("Segoe Print", 25), fg=slogan_color, 
+                bg=colors["bg"]).grid(row=1, column=1, sticky="w")
     # Generating Customizable Report-----------------------------------------------------------------------------------------------------------------------
     def printBusinesses(self, businesses, catName):
         self.updateInstructions("Preparing PDF report... Please wait.")

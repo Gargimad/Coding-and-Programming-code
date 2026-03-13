@@ -92,11 +92,11 @@ class StartScreen:
             "accentText": "white",
             "text": "black",
             "footer": baseColors["dark"],
-            "button": baseColors["lightCard"],
-            "buttonText": "black",
+            "button": baseColors["dark"],
+            "buttonText": "white",
             "highlight": baseColors["olive"],
             "bookmarkAdded": baseColors["bookmarkGold"],
-            "bookmarkRemove": "#BACAB8",
+            "bookmarkRemove": "#4A7023",
             "ratingStars": baseColors["bookmarkGold"]
         }
 
@@ -467,9 +467,9 @@ class StartScreen:
         scrollBarCanvasCreate = resultsContCanvas.create_window((0, 0), window=self.scrollingFrame, anchor="nw")
         
         #Calls the function that configures the canvas created before
-        def configure_canvas(event):
+        def configCanv(event):
             resultsContCanvas.itemconfig(scrollBarCanvasCreate, width=event.width)
-        resultsContCanvas.bind('<Configure>', configure_canvas)
+        resultsContCanvas.bind('<Configure>', configCanv)
 
         resultsContCanvas.configure(yscrollcommand=scrollbar.set)
         scrollbar.pack(side="right", fill="y")
@@ -864,12 +864,12 @@ class StartScreen:
         self.scrollingFrame = tk.Frame(canvas, bg=colors["bg"])  #Standardized name
         
         #This function ensures the frame expands to fill the canvas width
-        def configure_canvas(e):
+        def configCanv(e):
             canvas.itemconfig(
                 canvas.create_window((0, 0), window=self.scrollingFrame, anchor="nw"), 
                 width=e.width
             )
-        canvas.bind('<Configure>', configure_canvas)
+        canvas.bind('<Configure>', configCanv)
         
         self.scrollingFrame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
         canvas.configure(yscrollcommand=scrollbar.set)
@@ -998,7 +998,7 @@ class StartScreen:
                 try:
                     card.configure(bg=colors["card"])
                     #Update all children recursively
-                    self.update_widget_colors(card, colors)
+                    self.updateWidColors(card, colors)
                 except:
                     pass
 
@@ -1013,7 +1013,7 @@ class StartScreen:
         #Refresh current view to ensure all elements have correct theme
         self.refreshCurrentView()
     
-    def update_widget_colors(self, widget, colors):
+    def updateWidColors(self, widget, colors):
         try:
             if isinstance(widget, tk.Label):
                 if "★" in widget.cget('text') or "☆" in widget.cget('text'):
@@ -1033,7 +1033,7 @@ class StartScreen:
         
         #Recursively update children
         for child in widget.winfo_children():
-            self.update_widget_colors(child, colors)
+            self.updateWidColors(child, colors)
     
     def toggleDarkMode(self):
         self.darkMode = not self.darkMode

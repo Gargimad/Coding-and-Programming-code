@@ -73,66 +73,49 @@ class StartScreen:
 
         #Shared colors between the two
         baseColors = {
-            "navDark": "#202030",        # navbar
-            "buttonSlate": "#788AA3",    # buttons
-            "accentPurple": "#39304A",   # accents / headings
-            "bgGreen": "#B2C9AB",        # background
-            "cardBeige": "#E8DDB5",      # cards
-            "bookmarkGold": "#E1AD01"
+            "lightGreen": "#BACAB8",
+            "darkGreen": "#2B3A29",
+            "dark": "#241E2E",
+            "lightCard": "#DDE0D6",
+            "olive": "#6B8E23",
+            "bookmarkGold": "#E1AD01",
         }
 
         #Light Theme
         self.lightColors = {
-            "bg": baseColors["bgGreen"],
-            "nav": baseColors["navDark"],
-
-            "card": baseColors["cardBeige"],
+            "bg": baseColors["lightGreen"],
+            "nav": baseColors["lightGreen"],
+            "card": baseColors["lightCard"],
             "cardText": "black",
-
-            "accent": baseColors["accentPurple"],
-            "recommended": baseColors["accentPurple"],
+            "accent": baseColors["dark"],
+            "recommended": baseColors["dark"],
             "accentText": "white",
-
-            "text": "#202030",
-
-            "footer": baseColors["navDark"],
-
-            "button": baseColors["buttonSlate"],
-            "buttonText": "white",
-
-            "highlight": baseColors["accentPurple"],
-
+            "text": "black",
+            "footer": baseColors["dark"],
+            "button": baseColors["lightCard"],
+            "buttonText": "black",
+            "highlight": baseColors["olive"],
             "bookmarkAdded": baseColors["bookmarkGold"],
-            "bookmarkRemove": baseColors["buttonSlate"],
-
+            "bookmarkRemove": "#BACAB8",
             "ratingStars": baseColors["bookmarkGold"]
         }
 
         #Dark Theme
         self.darkColors = {
-            "bg": "#181820",
-
-            "nav": "#202030",
-
-            "card": "#2C2C38",
+            "bg": "#1E1E1E",
+            "nav": "#2B2B2B",
+            "card": "#333333",
             "cardText": "white",
-
-            "accent": "#788AA3",
-            "recommended": "#788AA3",
+            "accent": "#241E2E",
+            "recommended": "white",
             "accentText": "white",
-
             "text": "white",
-
-            "footer": "#101015",
-
-            "button": "#788AA3",
-            "buttonText": "white",
-
-            "highlight": "#B2C9AB",
-
-            "bookmarkAdded": "#FFD700",
-            "bookmarkRemove": "#555555",
-
+            "footer": "#111111",
+            "button": "#D1D2CB",
+            "buttonText": "black",
+            "highlight": "#4A7023",
+            "bookmarkAdded": "#B8860B",
+            "bookmarkRemove": "#BACAB8",
             "ratingStars": "#FFD700"
         }
 

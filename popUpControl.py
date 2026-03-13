@@ -22,22 +22,22 @@ class RatingPopup:
         self.popUp = tk.Toplevel(self.root)
         self.popUp.title(f"Rate {biz_name}")
         self.popUp.geometry("450x250")
-        self.popUp.configure(bg="#DAA520")
+        self.popUp.configure(bg="#BACAB8")
         self.popUp.grab_set()
         
         #Main content of the popup
         tk.Label(self.popUp, text=f"Rate {biz_name}", 
-                 font=("Georgia", 14, "bold"), bg="#DAA520").pack(pady=15)
+                 font=("Georgia", 14, "bold"), bg="#BACAB8").pack(pady=15)
         #Rating location frame
-        ratingLocFrame = tk.Frame(self.popUp, bg="#DAA520")
+        ratingLocFrame = tk.Frame(self.popUp, bg="#BACAB8")
         ratingLocFrame.pack()
         self.starBtns = []
         
         #For loop to show stars whenever user clicks 'rate business'
         for i in range(1, 6):
             btn = tk.Button(ratingLocFrame, text="★", font=("Arial", 30),
-                            bg="#DAA520", fg="#C0C0C0", bd=0, 
-                            activebackground="#DAA520", cursor="hand2",
+                            bg="#BACAB8", fg="#C0C0C0", bd=0, 
+                            activebackground="#BACAB8", cursor="hand2",
                             command=lambda s=i: self.setRating(s))
             btn.pack(side="left")
             self.starBtns.append(btn)
@@ -76,11 +76,11 @@ class ReviewPopup:
         self.popUp = tk.Toplevel(self.root)
         self.popUp.title(f"Review {biz_name}")
         self.popUp.geometry("800x500")
-        self.popUp.configure(bg="#DAA520")
+        self.popUp.configure(bg="#BACAB8")
         self.popUp.grab_set()
         #Review popup content
         tk.Label(self.popUp, text=f"Write a review for {biz_name}",
-                 font=("Georgia", 16, "bold"), bg="#DAA520").pack(pady=15)
+                 font=("Georgia", 16, "bold"), bg="#BACAB8").pack(pady=15)
 
         self.reviewBox = tk.Text(self.popUp, height=10, font=("Georgia", 11), wrap="word")
         self.reviewBox.pack(padx=20, pady=10, fill="both", expand=True)

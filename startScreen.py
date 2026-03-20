@@ -393,7 +393,6 @@ class StartScreen:
 
             #Get subcategory for this business
             sub_id = self.db.getBusinessSubId(biz_id)
-            print(f"Business {biz_id} subcategory:", sub_id)
 
             #If DB fails, skip safely
             if sub_id is None:
@@ -422,8 +421,6 @@ class StartScreen:
         #Take top 5
         recommended = [biz for score, biz in scoredBusinesses[:5]]
 
-        print("Final recommended list:", recommended)
-        print("--- End Debug ---\n")
 
         return recommended
         
@@ -501,8 +498,7 @@ class StartScreen:
         #Temporary frame reference
         self.cardsFrame = tk.Frame(self.scrollingFrame)
 
-        # ONLY show recommendations if NOT in bookmarks view
-        if sub_id != -1:  # Don't show recommendations for bookmarks
+        if sub_id != -1: 
             #Get personalized recommendations
             all_biz = self.fetchAllBusinesses()
             recommended = self.getRecommendedBusinesses(all_biz)

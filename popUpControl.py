@@ -36,7 +36,7 @@ class RatingPopup:
         #For loop to show stars whenever user clicks 'rate business'
         for i in range(1, 6):
             btn = tk.Button(ratingLocFrame, text="★", font=("Arial", 30),
-                            bg="#BACAB8", fg="#C0C0C0", bd=0, 
+                            bg="#BACAB8", fg="white", bd=0, 
                             activebackground="#BACAB8", cursor="hand2",
                             command=lambda s=i: self.setRating(s))
             btn.pack(side="left")
@@ -50,7 +50,7 @@ class RatingPopup:
     def setRating(self, score):
         self.ratingGiven = score
         for i, btn in enumerate(self.starBtns):
-            btn.config(fg="#FFD700" if i < score else "#C0C0C0")
+            btn.config(fg="#FFD700" if i < score else "white")
             
     #Allowing user to submit rating
     def submitRating(self):
